@@ -215,6 +215,7 @@ dependencies = [
  "entity_table",
  "grid_2d",
  "grid_search_cardinal",
+ "line_2d",
  "meap",
  "rand 0.8.4",
  "rand_isaac",
@@ -1198,6 +1199,16 @@ checksum = "6f84d96438c15fcd6c3f244c8fce01d1e2b9c6b5623e9c711dc9286d8fc92d6a"
 dependencies = [
  "cfg-if 1.0.0",
  "winapi",
+]
+
+[[package]]
+name = "line_2d"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2027de8b03f35d92ba5764e5c9164e6d0a8710ba6a3d89b5fd263345354c3fd4"
+dependencies = [
+ "coord_2d",
+ "direction",
 ]
 
 [[package]]

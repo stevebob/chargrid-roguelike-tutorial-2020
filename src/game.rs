@@ -88,7 +88,12 @@ impl GameState {
         self.behaviour_context
             .update(self.player_entity, &self.world);
         for (entity, agent) in self.ai_state.iter_mut() {
-            let npc_action = agent.act(entity, &self.world, &mut self.behaviour_context);
+            let npc_action = agent.act(
+                entity,
+                self.player_entity,
+                &self.world,
+                &mut self.behaviour_context,
+            );
             match npc_action {
                 NpcAction::Wait => (),
                 NpcAction::Move(direction) => self.world.maybe_move_character(entity, direction),

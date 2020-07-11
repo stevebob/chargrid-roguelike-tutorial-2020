@@ -209,4 +209,10 @@ impl World {
             })
             .unwrap_or(false)
     }
+    pub fn can_npc_see_through_cell(&self, coord: Coord) -> bool {
+        self.spatial_table
+            .layers_at(coord)
+            .map(|layers| layers.feature.is_none())
+            .unwrap_or(false)
+    }
 }
