@@ -52,7 +52,9 @@ pub enum NpcAction {
     Move(CardinalDirection),
 }
 
-pub struct Agent {}
+pub struct Agent {
+    turns_since_last_saw_player: u32,
+}
 
 fn npc_has_line_of_sight(src: Coord, dst: Coord, world: &World) -> bool {
     const NPC_VISION_DISTANCE_SQUARED: u32 = 100;
@@ -75,7 +77,9 @@ fn npc_has_line_of_sight(src: Coord, dst: Coord, world: &World) -> bool {
 
 impl Agent {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            turns_since_last_saw_player: u32::MAX,
+        }
     }
 
     pub fn act(
@@ -95,7 +99,13 @@ impl Agent {
         }
         let npc_coord = world.entity_coord(entity).expect("npc has no coord");
         let player_coord = world.entity_coord(player).expect("player has no coord");
-        if !npc_has_line_of_sight(npc_coord, player_coord, world) {
+        if npc_has_line_of_sight(npc_coord, player_coord, world) {
+            self.turns_since_last_saw_player = 0;
+        } else {
+            self.turns_since_last_saw_player = self.turns_since_last_saw_player.saturating_add(1);
+        }
+        const MAX_TURNS_TO_CHASE_PLAYER_AFTER_LOSING_SIGHT: u32 = 3;
+        if self.turns_since_last_saw_player > MAX_TURNS_TO_CHASE_PLAYER_AFTER_LOSING_SIGHT {
             return NpcAction::Wait;
         }
         const SEARCH_DISTANCE: u32 = 5;
