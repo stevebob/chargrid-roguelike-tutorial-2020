@@ -214,6 +214,7 @@ dependencies = [
  "direction",
  "entity_table",
  "grid_2d",
+ "meap",
  "rand 0.8.4",
  "rand_isaac",
  "rgb24",
@@ -1182,6 +1183,12 @@ name = "maybe-uninit"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
+
+[[package]]
+name = "meap"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00da0d48ca9c4a9b0d706fccffe7b67671e50073d6eca33b61a8f99605ae1dfc"
 
 [[package]]
 name = "memchr"
