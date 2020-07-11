@@ -214,6 +214,7 @@ dependencies = [
  "direction",
  "entity_table",
  "grid_2d",
+ "grid_search_cardinal",
  "meap",
  "rand 0.8.4",
  "rand_isaac",
@@ -1022,6 +1023,60 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33baf41f2c0a62a5d3bdc726002f09afd2266d422f530c1ea170830e5624e066"
 dependencies = [
  "coord_2d",
+]
+
+[[package]]
+name = "grid_search_cardinal"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e47ad0f3cbfe30e6094901b74a4592bca5b0d741b4ffc24c294fb42aeb101046"
+dependencies = [
+ "grid_search_cardinal_best",
+ "grid_search_cardinal_distance_map",
+ "grid_search_cardinal_point_to_point",
+]
+
+[[package]]
+name = "grid_search_cardinal_best"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d2cdab27e1aacc858325ed886d549d5e877c33d73eff11142c1b5abbc4a276d"
+dependencies = [
+ "coord_2d",
+ "direction",
+ "grid_search_cardinal_common",
+]
+
+[[package]]
+name = "grid_search_cardinal_common"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bb3c749643f0f72e13d439c92fe516f6f4d506cac0cc1107e45772fe5596abb"
+dependencies = [
+ "direction",
+ "grid_2d",
+]
+
+[[package]]
+name = "grid_search_cardinal_distance_map"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8370e43eedd0ed39b5cd248c57564e843ac19416841ffc4478c3f32458afc84"
+dependencies = [
+ "direction",
+ "grid_2d",
+ "grid_search_cardinal_common",
+]
+
+[[package]]
+name = "grid_search_cardinal_point_to_point"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d46942b134594cf4a415f497c7a6cb29b7d320d5c6cf717f867053be9ed5e433"
+dependencies = [
+ "coord_2d",
+ "direction",
+ "grid_search_cardinal_common",
 ]
 
 [[package]]
