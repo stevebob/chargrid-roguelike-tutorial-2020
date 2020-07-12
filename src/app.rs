@@ -24,6 +24,9 @@ impl AppData {
         }
     }
     fn handle_input(&mut self, input: Input) {
+        if !self.game_state.is_player_alive() {
+            return;
+        }
         match input {
             Input::Keyboard(key) => match key {
                 KeyboardInput::Left => self.game_state.maybe_move_player(CardinalDirection::West),
@@ -47,11 +50,21 @@ impl AppView {
     }
 }
 
+mod colours {
+    use rgb24::Rgb24;
+    pub const PLAYER: Rgb24 = Rgb24::new_grey(255);
+    pub const ORC: Rgb24 = Rgb24::new(0, 187, 0);
+    pub const TROLL: Rgb24 = Rgb24::new(187, 0, 0);
+}
+
 fn currently_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
     match tile {
         Tile::Player => ViewCell::new()
             .with_character('@')
-            .with_foreground(Rgb24::new_grey(255)),
+            .with_foreground(colours::PLAYER),
+        Tile::PlayerCorpse => ViewCell::new()
+            .with_character('%')
+            .with_foreground(colours::PLAYER),
         Tile::Floor => ViewCell::new()
             .with_character('.')
             .with_foreground(Rgb24::new_grey(63))
@@ -63,11 +76,19 @@ fn currently_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
         Tile::Npc(NpcType::Orc) => ViewCell::new()
             .with_character('o')
             .with_bold(true)
-            .with_foreground(Rgb24::new(0, 187, 0)),
+            .with_foreground(colours::ORC),
         Tile::Npc(NpcType::Troll) => ViewCell::new()
             .with_character('T')
             .with_bold(true)
-            .with_foreground(Rgb24::new(187, 0, 0)),
+            .with_foreground(colours::TROLL),
+        Tile::NpcCorpse(NpcType::Orc) => ViewCell::new()
+            .with_character('%')
+            .with_bold(true)
+            .with_foreground(colours::ORC),
+        Tile::NpcCorpse(NpcType::Troll) => ViewCell::new()
+            .with_character('%')
+            .with_bold(true)
+            .with_foreground(colours::TROLL),
     }
 }
 
@@ -75,6 +96,9 @@ fn previously_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
     match tile {
         Tile::Player => ViewCell::new()
             .with_character('@')
+            .with_foreground(Rgb24::new_grey(255)),
+        Tile::PlayerCorpse => ViewCell::new()
+            .with_character('%')
             .with_foreground(Rgb24::new_grey(255)),
         Tile::Floor => ViewCell::new()
             .with_character('.')
@@ -91,6 +115,12 @@ fn previously_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
         Tile::Npc(NpcType::Troll) => ViewCell::new()
             .with_character('T')
             .with_bold(true)
+            .with_foreground(Rgb24::new_grey(63)),
+        Tile::NpcCorpse(NpcType::Orc) => ViewCell::new()
+            .with_character('%')
+            .with_foreground(Rgb24::new_grey(63)),
+        Tile::NpcCorpse(NpcType::Troll) => ViewCell::new()
+            .with_character('%')
             .with_foreground(Rgb24::new_grey(63)),
     }
 }
@@ -116,7 +146,8 @@ impl<'a> View<&'a AppData> for AppView {
                 None => -1,
                 Some(Layer::Floor) => 0,
                 Some(Layer::Feature) => 1,
-                Some(Layer::Character) => 2,
+                Some(Layer::Corpse) => 2,
+                Some(Layer::Character) => 3,
             };
             frame.set_cell_relative(entity_to_render.location.coord, depth, view_cell, context);
         }

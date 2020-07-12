@@ -87,6 +87,14 @@ impl GameState {
     fn ai_turn(&mut self) {
         self.behaviour_context
             .update(self.player_entity, &self.world);
+        let dead_entities = self
+            .ai_state
+            .entities()
+            .filter(|&entity| !self.world.is_living_character(entity))
+            .collect::<Vec<_>>();
+        for dead_entity in dead_entities {
+            self.ai_state.remove(dead_entity);
+        }
         for (entity, agent) in self.ai_state.iter_mut() {
             let npc_action = agent.act(
                 entity,
@@ -99,5 +107,8 @@ impl GameState {
                 NpcAction::Move(direction) => self.world.maybe_move_character(entity, direction),
             }
         }
+    }
+    pub fn is_player_alive(&self) -> bool {
+        self.world.is_living_character(self.player_entity)
     }
 }
