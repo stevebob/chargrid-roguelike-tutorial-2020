@@ -1,4 +1,5 @@
 use crate::game::GameState;
+use crate::ui::{UiData, UiView};
 use crate::visibility::{CellVisibility, VisibilityAlgorithm};
 use crate::world::{Layer, NpcType, Tile};
 use chargrid::{
@@ -6,10 +7,12 @@ use chargrid::{
     input::{keys, Input, KeyboardInput},
     render::{ColModify, Frame, View, ViewCell, ViewContext},
 };
-use coord_2d::Size;
+use coord_2d::{Coord, Size};
 use direction::CardinalDirection;
 use rgb24::Rgb24;
 use std::time::Duration;
+
+const UI_NUM_ROWS: u32 = 2;
 
 struct AppData {
     game_state: GameState,
@@ -18,8 +21,9 @@ struct AppData {
 
 impl AppData {
     fn new(screen_size: Size, rng_seed: u64, visibility_algorithm: VisibilityAlgorithm) -> Self {
+        let game_area_size = screen_size.set_height(screen_size.height() - UI_NUM_ROWS);
         Self {
-            game_state: GameState::new(screen_size, rng_seed, visibility_algorithm),
+            game_state: GameState::new(game_area_size, rng_seed, visibility_algorithm),
             visibility_algorithm,
         }
     }
@@ -42,11 +46,21 @@ impl AppData {
     }
 }
 
-struct AppView {}
+struct AppView {
+    ui_y_offset: i32,
+    game_view: GameView,
+    ui_view: UiView,
+}
 
 impl AppView {
-    fn new() -> Self {
-        Self {}
+    fn new(screen_size: Size) -> Self {
+        const UI_Y_PADDING: u32 = 1;
+        let ui_y_offset = (screen_size.height() - UI_NUM_ROWS + UI_Y_PADDING) as i32;
+        Self {
+            ui_y_offset,
+            game_view: GameView::default(),
+            ui_view: UiView::default(),
+        }
     }
 }
 
@@ -106,14 +120,17 @@ fn previously_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
     }
 }
 
-impl<'a> View<&'a AppData> for AppView {
+#[derive(Default)]
+struct GameView {}
+
+impl<'a> View<&'a GameState> for GameView {
     fn view<F: Frame, C: ColModify>(
         &mut self,
-        data: &'a AppData,
+        game_state: &'a GameState,
         context: ViewContext<C>,
         frame: &mut F,
     ) {
-        for entity_to_render in data.game_state.entities_to_render() {
+        for entity_to_render in game_state.entities_to_render() {
             let view_cell = match entity_to_render.visibility {
                 CellVisibility::Currently => {
                     currently_visible_view_cell_of_tile(entity_to_render.tile)
@@ -135,6 +152,23 @@ impl<'a> View<&'a AppData> for AppView {
     }
 }
 
+impl<'a> View<&'a AppData> for AppView {
+    fn view<F: Frame, C: ColModify>(
+        &mut self,
+        data: &'a AppData,
+        context: ViewContext<C>,
+        frame: &mut F,
+    ) {
+        self.game_view.view(&data.game_state, context, frame);
+        let player_hit_points = data.game_state.player_hit_points();
+        self.ui_view.view(
+            UiData { player_hit_points },
+            context.add_offset(Coord::new(0, self.ui_y_offset)),
+            frame,
+        );
+    }
+}
+
 pub struct App {
     data: AppData,
     view: AppView,
@@ -148,7 +182,7 @@ impl App {
     ) -> Self {
         Self {
             data: AppData::new(screen_size, rng_seed, visibility_algorithm),
-            view: AppView::new(),
+            view: AppView::new(screen_size),
         }
     }
 }

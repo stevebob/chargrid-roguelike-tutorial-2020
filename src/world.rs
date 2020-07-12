@@ -253,6 +253,9 @@ impl World {
             0
         }
     }
+    pub fn hit_points(&self, entity: Entity) -> Option<HitPoints> {
+        self.components.hit_points.get(entity).cloned()
+    }
     pub fn entity_coord(&self, entity: Entity) -> Option<Coord> {
         self.spatial_table.coord_of(entity)
     }
