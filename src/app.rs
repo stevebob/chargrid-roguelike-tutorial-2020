@@ -1,7 +1,7 @@
 use crate::game::GameState;
 use crate::ui::{UiData, UiView};
 use crate::visibility::{CellVisibility, VisibilityAlgorithm};
-use crate::world::{Layer, NpcType, Tile};
+use crate::world::{ItemType, Layer, NpcType, Tile};
 use chargrid::{
     app::{App as ChargridApp, ControlFlow},
     input::{keys, Input, KeyboardInput},
@@ -69,6 +69,7 @@ pub mod colours {
     pub const PLAYER: Rgb24 = Rgb24::new_grey(255);
     pub const ORC: Rgb24 = Rgb24::new(0, 187, 0);
     pub const TROLL: Rgb24 = Rgb24::new(187, 0, 0);
+    pub const HEALTH_POTION: Rgb24 = Rgb24::new(255, 0, 255);
 
     pub fn npc_colour(npc_type: NpcType) -> Rgb24 {
         match npc_type {
@@ -110,6 +111,9 @@ fn currently_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
             .with_character('%')
             .with_bold(true)
             .with_foreground(colours::TROLL),
+        Tile::Item(ItemType::HealthPotion) => ViewCell::new()
+            .with_character('!')
+            .with_foreground(colours::HEALTH_POTION),
     }
 }
 
@@ -151,7 +155,7 @@ impl<'a> View<&'a GameState> for GameView {
                 None => -1,
                 Some(Layer::Floor) => 0,
                 Some(Layer::Feature) => 1,
-                Some(Layer::Corpse) => 2,
+                Some(Layer::Object) => 2,
                 Some(Layer::Character) => 3,
             };
             frame.set_cell_relative(entity_to_render.location.coord, depth, view_cell, context);
