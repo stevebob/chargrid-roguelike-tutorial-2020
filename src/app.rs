@@ -94,12 +94,6 @@ fn currently_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
 
 fn previously_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
     match tile {
-        Tile::Player => ViewCell::new()
-            .with_character('@')
-            .with_foreground(Rgb24::new_grey(255)),
-        Tile::PlayerCorpse => ViewCell::new()
-            .with_character('%')
-            .with_foreground(Rgb24::new_grey(255)),
         Tile::Floor => ViewCell::new()
             .with_character('.')
             .with_foreground(Rgb24::new_grey(63))
@@ -108,20 +102,7 @@ fn previously_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
             .with_character('#')
             .with_foreground(Rgb24::new_grey(63))
             .with_background(Rgb24::new_grey(0)),
-        Tile::Npc(NpcType::Orc) => ViewCell::new()
-            .with_character('o')
-            .with_bold(true)
-            .with_foreground(Rgb24::new_grey(63)),
-        Tile::Npc(NpcType::Troll) => ViewCell::new()
-            .with_character('T')
-            .with_bold(true)
-            .with_foreground(Rgb24::new_grey(63)),
-        Tile::NpcCorpse(NpcType::Orc) => ViewCell::new()
-            .with_character('%')
-            .with_foreground(Rgb24::new_grey(63)),
-        Tile::NpcCorpse(NpcType::Troll) => ViewCell::new()
-            .with_character('%')
-            .with_foreground(Rgb24::new_grey(63)),
+        _ => ViewCell::new(),
     }
 }
 
