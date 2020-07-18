@@ -38,6 +38,7 @@ impl AppData {
                 KeyboardInput::Up => self.game_state.maybe_move_player(CardinalDirection::North),
                 KeyboardInput::Down => self.game_state.maybe_move_player(CardinalDirection::South),
                 KeyboardInput::Char(' ') => self.game_state.wait_player(),
+                KeyboardInput::Char('g') => self.game_state.maybe_player_get_item(),
                 _ => (),
             },
             _ => (),
@@ -75,6 +76,12 @@ pub mod colours {
         match npc_type {
             NpcType::Orc => ORC,
             NpcType::Troll => TROLL,
+        }
+    }
+
+    pub fn item_colour(item_type: ItemType) -> Rgb24 {
+        match item_type {
+            ItemType::HealthPotion => HEALTH_POTION,
         }
     }
 }

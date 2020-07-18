@@ -6,6 +6,41 @@ use direction::CardinalDirection;
 use entity_table::{ComponentTable, Entity, EntityAllocator};
 use rand::Rng;
 
+#[derive(Clone, Debug)]
+pub struct Inventory {
+    slots: Vec<Option<Entity>>,
+}
+
+pub struct InventoryIsFull;
+
+#[derive(Debug)]
+pub struct InventorySlotIsEmpty;
+
+impl Inventory {
+    pub fn new(capacity: usize) -> Self {
+        let slots = vec![None; capacity];
+        Self { slots }
+    }
+    pub fn slots(&self) -> &[Option<Entity>] {
+        &self.slots
+    }
+    pub fn insert(&mut self, item: Entity) -> Result<(), InventoryIsFull> {
+        if let Some(slot) = self.slots.iter_mut().find(|s| s.is_none()) {
+            *slot = Some(item);
+            Ok(())
+        } else {
+            Err(InventoryIsFull)
+        }
+    }
+    pub fn remove(&mut self, index: usize) -> Result<Entity, InventorySlotIsEmpty> {
+        if let Some(slot) = self.slots.get_mut(index) {
+            slot.take().ok_or(InventorySlotIsEmpty)
+        } else {
+            Err(InventorySlotIsEmpty)
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ItemType {
     HealthPotion,
@@ -63,6 +98,7 @@ entity_table::declare_entity_module! {
         npc_type: NpcType,
         hit_points: HitPoints,
         item: ItemType,
+        inventory: Inventory,
     }
 }
 
@@ -146,6 +182,7 @@ impl World {
         self.components
             .hit_points
             .insert(entity, HitPoints::new_full(20));
+        self.components.inventory.insert(entity, Inventory::new(10));
         entity
     }
     fn spawn_npc(&mut self, coord: Coord, npc_type: NpcType) -> Entity {
@@ -299,6 +336,36 @@ impl World {
             other => panic!("unexpected tile on character {:?}", other),
         };
         self.components.tile.insert(entity, corpse_tile);
+    }
+    pub fn maybe_get_item(
+        &mut self,
+        character: Entity,
+        message_log: &mut Vec<LogMessage>,
+    ) -> Result<(), ()> {
+        let coord = self
+            .spatial_table
+            .coord_of(character)
+            .expect("character has no coord");
+        if let Some(object_entity) = self.spatial_table.layers_at_checked(coord).object {
+            if let Some(&item_type) = self.components.item.get(object_entity) {
+                // this assumes that the only character that can get items is the player
+                let inventory = self
+                    .components
+                    .inventory
+                    .get_mut(character)
+                    .expect("character has no inventory");
+                if inventory.insert(object_entity).is_ok() {
+                    self.spatial_table.remove(object_entity);
+                    message_log.push(LogMessage::PlayerGets(item_type));
+                    return Ok(());
+                } else {
+                    message_log.push(LogMessage::PlayerInventoryIsFull);
+                    return Err(());
+                }
+            }
+        }
+        message_log.push(LogMessage::NoItemUnderPlayer);
+        Err(())
     }
     pub fn is_living_character(&self, entity: Entity) -> bool {
         self.spatial_table.layer_of(entity) == Some(Layer::Character)

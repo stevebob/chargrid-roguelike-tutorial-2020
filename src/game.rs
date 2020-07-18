@@ -1,6 +1,6 @@
 use crate::behaviour::{Agent, BehaviourContext, NpcAction};
 use crate::visibility::{CellVisibility, VisibilityAlgorithm, VisibilityGrid};
-use crate::world::{HitPoints, Location, NpcType, Populate, Tile, World};
+use crate::world::{HitPoints, ItemType, Location, NpcType, Populate, Tile, World};
 use coord_2d::Size;
 use direction::CardinalDirection;
 use entity_table::ComponentTable;
@@ -20,6 +20,9 @@ pub enum LogMessage {
     NpcAttacksPlayer(NpcType),
     PlayerKillsNpc(NpcType),
     NpcKillsPlayer(NpcType),
+    PlayerGets(ItemType),
+    PlayerInventoryIsFull,
+    NoItemUnderPlayer,
 }
 
 pub struct GameState {
@@ -66,6 +69,15 @@ impl GameState {
         self.world
             .maybe_move_character(self.player_entity, direction, &mut self.message_log);
         self.ai_turn();
+    }
+    pub fn maybe_player_get_item(&mut self) {
+        if self
+            .world
+            .maybe_get_item(self.player_entity, &mut self.message_log)
+            .is_ok()
+        {
+            self.ai_turn();
+        }
     }
     pub fn entities_to_render<'a>(&'a self) -> impl 'a + Iterator<Item = EntityToRender> {
         let tile_component = &self.world.components.tile;
