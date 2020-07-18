@@ -367,6 +367,92 @@ impl World {
         message_log.push(LogMessage::NoItemUnderPlayer);
         Err(())
     }
+    pub fn maybe_use_item(
+        &mut self,
+        character: Entity,
+        inventory_index: usize,
+        message_log: &mut Vec<LogMessage>,
+    ) -> Result<(), ()> {
+        let inventory = self
+            .components
+            .inventory
+            .get_mut(character)
+            .expect("character has no inventory");
+        let item = match inventory.remove(inventory_index) {
+            Ok(item) => item,
+            Err(InventorySlotIsEmpty) => {
+                message_log.push(LogMessage::NoItemInInventorySlot);
+                return Err(());
+            }
+        };
+        let &item_type = self
+            .components
+            .item
+            .get(item)
+            .expect("non-item in inventory");
+        match item_type {
+            ItemType::HealthPotion => {
+                let mut hit_points = self
+                    .components
+                    .hit_points
+                    .get_mut(character)
+                    .expect("character has no hit points");
+                const HEALTH_TO_HEAL: u32 = 5;
+                hit_points.current = hit_points.max.min(hit_points.current + HEALTH_TO_HEAL);
+                message_log.push(LogMessage::PlayerHeals);
+            }
+        }
+        Ok(())
+    }
+    pub fn maybe_drop_item(
+        &mut self,
+        character: Entity,
+        inventory_index: usize,
+        message_log: &mut Vec<LogMessage>,
+    ) -> Result<(), ()> {
+        let coord = self
+            .spatial_table
+            .coord_of(character)
+            .expect("character has no coord");
+        if self.spatial_table.layers_at_checked(coord).object.is_some() {
+            message_log.push(LogMessage::NoSpaceToDropItem);
+            return Err(());
+        }
+        let inventory = self
+            .components
+            .inventory
+            .get_mut(character)
+            .expect("character has no inventory");
+        let item = match inventory.remove(inventory_index) {
+            Ok(item) => item,
+            Err(InventorySlotIsEmpty) => {
+                message_log.push(LogMessage::NoItemInInventorySlot);
+                return Err(());
+            }
+        };
+        self.spatial_table
+            .update(
+                item,
+                Location {
+                    coord,
+                    layer: Some(Layer::Object),
+                },
+            )
+            .unwrap();
+        let &item_type = self
+            .components
+            .item
+            .get(item)
+            .expect("non-item in inventory");
+        message_log.push(LogMessage::PlayerDrops(item_type));
+        Ok(())
+    }
+    pub fn inventory(&self, entity: Entity) -> Option<&Inventory> {
+        self.components.inventory.get(entity)
+    }
+    pub fn item_type(&self, entity: Entity) -> Option<ItemType> {
+        self.components.item.get(entity).cloned()
+    }
     pub fn is_living_character(&self, entity: Entity) -> bool {
         self.spatial_table.layer_of(entity) == Some(Layer::Character)
     }

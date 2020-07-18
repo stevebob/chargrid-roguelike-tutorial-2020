@@ -128,6 +128,22 @@ impl<'a> View<&'a [LogMessage]> for MessagesView {
                 NoItemUnderPlayer => {
                     write!(&mut buf[0].text, "Nothing to get!").unwrap();
                 }
+                NoItemInInventorySlot => {
+                    write!(&mut buf[0].text, "No item in inventory slot!").unwrap();
+                }
+                PlayerHeals => {
+                    write!(&mut buf[0].text, "You feel slightly better.").unwrap();
+                    buf[0].style.foreground = Some(Rgb24::new(0, 187, 0));
+                }
+                PlayerDrops(item_type) => {
+                    write!(&mut buf[0].text, "You drop the ").unwrap();
+                    write!(&mut buf[1].text, "{}", item_type.name()).unwrap();
+                    buf[1].style.foreground = Some(colours::item_colour(item_type));
+                    write!(&mut buf[2].text, ".").unwrap();
+                }
+                NoSpaceToDropItem => {
+                    write!(&mut buf[0].text, "No space to drop item!").unwrap();
+                }
             }
         }
         const NUM_MESSAGES: usize = 4;
