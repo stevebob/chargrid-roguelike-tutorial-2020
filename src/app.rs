@@ -8,8 +8,10 @@ use chargrid::{
         AlignView, Alignment, BorderStyle, BorderView, BoundView, FillBackgroundView, MinSizeView,
     },
     event_routine::{
-        self, common_event::CommonEvent, make_either, DataSelector, Decorate, EventOrPeek,
-        EventRoutine, EventRoutineView, Handled, Loop, SideEffect, Value, ViewSelector,
+        self,
+        common_event::{CommonEvent, Delay},
+        make_either, DataSelector, Decorate, EventOrPeek, EventRoutine, EventRoutineView, Handled,
+        Loop, SideEffect, Value, ViewSelector,
     },
     input::{keys, Input, KeyboardInput},
     menu::{
@@ -17,12 +19,13 @@ use chargrid::{
         MenuInstanceChooseOrEscape, MenuInstanceMouseTracker, MenuInstanceRoutine,
     },
     render::{ColModify, ColModifyMap, Frame, Style, View, ViewCell, ViewContext},
-    text::{RichTextPart, RichTextViewSingleLine},
+    text::{RichTextPart, RichTextViewSingleLine, StringViewSingleLine},
 };
 use coord_2d::{Coord, Size};
 use direction::CardinalDirection;
 use rgb24::Rgb24;
 use std::collections::HashMap;
+use std::time::Duration;
 
 const UI_NUM_ROWS: u32 = 5;
 
@@ -283,9 +286,6 @@ impl AppData {
         }
     }
     fn handle_input(&mut self, input: Input) -> Option<GameReturn> {
-        if !self.game_state.is_player_alive() {
-            return Some(GameReturn::GameOver);
-        }
         match input {
             Input::Keyboard(key) => match key {
                 KeyboardInput::Left => self.game_state.maybe_move_player(CardinalDirection::West),
@@ -302,6 +302,9 @@ impl AppData {
             _ => (),
         }
         self.game_state.update_visibility(self.visibility_algorithm);
+        if !self.game_state.is_player_alive() {
+            return Some(GameReturn::GameOver);
+        }
         None
     }
 }
@@ -486,13 +489,57 @@ fn drop_item() -> impl EventRoutine<Return = (), Data = AppData, View = AppView,
     })
 }
 
+fn game_over() -> impl EventRoutine<Return = (), Data = AppData, View = AppView, Event = CommonEvent>
+{
+    struct GameOverDecorate;
+    impl Decorate for GameOverDecorate {
+        type View = AppView;
+        type Data = AppData;
+        fn view<E, F, C>(
+            &self,
+            data: &Self::Data,
+            event_routine_view: EventRoutineView<E>,
+            context: ViewContext<C>,
+            frame: &mut F,
+        ) where
+            E: EventRoutine<Data = Self::Data, View = Self::View>,
+            F: Frame,
+            C: ColModify,
+        {
+            AlignView {
+                alignment: Alignment::centre(),
+                view: StringViewSingleLine::new(
+                    Style::new()
+                        .with_foreground(Rgb24::new(255, 0, 0))
+                        .with_bold(true),
+                ),
+            }
+            .view("YOU DIED", context.add_depth(10), frame);
+            FillBackgroundView {
+                rgb24: Rgb24::new(31, 0, 0),
+                view: &mut event_routine_view.view.game_view,
+            }
+            .view(
+                &data.game_state,
+                context.compose_col_modify(ColModifyMap(|c: Rgb24| {
+                    c.saturating_scalar_mul_div(1, 3)
+                        .saturating_add(Rgb24::new(31, 0, 0))
+                })),
+                frame,
+            );
+            event_routine_view.view.render_ui(&data, context, frame);
+        }
+    }
+    Delay::new(Duration::from_millis(2000)).decorated(GameOverDecorate)
+}
+
 fn game_loop() -> impl EventRoutine<Return = (), Data = AppData, View = AppView, Event = CommonEvent>
 {
     make_either!(Ei = A | B | C | D);
     Loop::new(|| {
         GameEventRoutine.and_then(|game_return| match game_return {
             GameReturn::Exit => Ei::A(Value::new(Some(()))),
-            GameReturn::GameOver => Ei::B(Value::new(Some(()))),
+            GameReturn::GameOver => Ei::B(game_over().map(|()| Some(()))),
             GameReturn::UseItem => Ei::C(use_item().map(|_| None)),
             GameReturn::DropItem => Ei::D(drop_item().map(|_| None)),
         })
