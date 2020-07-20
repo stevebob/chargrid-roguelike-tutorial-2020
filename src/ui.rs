@@ -1,10 +1,10 @@
 use crate::app::colours;
-use crate::game::LogMessage;
+use crate::game::{ExamineCell, LogMessage};
 use crate::world::HitPoints;
 use chargrid::{
-    decorator::{AlignView, Alignment, BoundView},
+    decorator::{AlignView, Alignment, AlignmentX, AlignmentY, BoundView},
     render::{ColModify, Frame, Style, View, ViewCell, ViewContext},
-    text::{RichTextPartOwned, RichTextViewSingleLine, StringViewSingleLine},
+    text::{wrap, RichTextPartOwned, RichTextViewSingleLine, StringView, StringViewSingleLine},
 };
 use coord_2d::{Coord, Size};
 use rgb24::Rgb24;
@@ -160,9 +160,19 @@ impl<'a> View<&'a [LogMessage]> for MessagesView {
     }
 }
 
+fn examine_cell_str(examine_cell: ExamineCell) -> &'static str {
+    match examine_cell {
+        ExamineCell::Npc(npc_type) | ExamineCell::NpcCorpse(npc_type) => npc_type.name(),
+        ExamineCell::Item(item_type) => item_type.name(),
+        ExamineCell::Player => "yourself",
+    }
+}
+
 pub struct UiData<'a> {
     pub player_hit_points: HitPoints,
     pub messages: &'a [LogMessage],
+    pub name: Option<&'static str>,
+    pub examine_cell: Option<ExamineCell>,
 }
 
 #[derive(Default)]
@@ -183,5 +193,37 @@ impl<'a> View<UiData<'a>> for UiView {
         let message_log_offset = Coord::new(HEALTH_WIDTH as i32 + 1, 0);
         self.messages_view
             .view(data.messages, context.add_offset(message_log_offset), frame);
+        if let Some(name) = data.name {
+            BoundView {
+                size: Size::new(HEALTH_WIDTH, 1),
+                view: AlignView {
+                    alignment: Alignment::centre(),
+                    view: StringViewSingleLine::new(
+                        Style::new().with_foreground(Rgb24::new_grey(255)),
+                    ),
+                },
+            }
+            .view(name, context.add_offset(Coord::new(0, 1)), frame);
+        }
+        if let Some(examine_cell) = data.examine_cell {
+            BoundView {
+                size: Size::new(HEALTH_WIDTH, 2),
+                view: AlignView {
+                    alignment: Alignment {
+                        x: AlignmentX::Centre,
+                        y: AlignmentY::Bottom,
+                    },
+                    view: StringView::new(
+                        Style::new().with_foreground(Rgb24::new_grey(187)),
+                        wrap::Word::new(),
+                    ),
+                },
+            }
+            .view(
+                examine_cell_str(examine_cell),
+                context.add_offset(Coord::new(0, 2)),
+                frame,
+            );
+        }
     }
 }

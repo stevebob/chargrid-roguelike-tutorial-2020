@@ -13,12 +13,12 @@ use chargrid::{
         make_either, DataSelector, Decorate, EventOrPeek, EventRoutine, EventRoutineView, Handled,
         Loop, SideEffect, Value, ViewSelector,
     },
-    input::{keys, Input, KeyboardInput},
+    input::{keys, Input, KeyboardInput, MouseButton, MouseInput},
     menu::{
         self, ChooseSelector, MenuIndexFromScreenCoord, MenuInstanceBuilder, MenuInstanceChoose,
         MenuInstanceChooseOrEscape, MenuInstanceMouseTracker, MenuInstanceRoutine,
     },
-    render::{ColModify, ColModifyMap, Frame, Style, View, ViewCell, ViewContext},
+    render::{blend_mode, ColModify, ColModifyMap, Frame, Style, View, ViewCell, ViewContext},
     text::{RichTextPart, RichTextViewSingleLine, StringViewSingleLine},
 };
 use coord_2d::{Coord, Size};
@@ -110,7 +110,9 @@ impl<'a> Decorate for InventorySlotMenuDecorate<'a> {
             context.compose_col_modify(ColModifyMap(|c: Rgb24| c.saturating_scalar_mul_div(1, 2))),
             frame,
         );
-        event_routine_view.view.render_ui(&data, context, frame);
+        event_routine_view
+            .view
+            .render_ui(None, &data, context, frame);
     }
 }
 
@@ -206,6 +208,7 @@ enum GameReturn {
     UseItem,
     DropItem,
     GameOver,
+    Examine,
 }
 
 impl EventRoutine for GameEventRoutine {
@@ -246,7 +249,85 @@ impl EventRoutine for GameEventRoutine {
         C: ColModify,
     {
         view.game_view.view(&data.game_state, context, frame);
-        view.render_ui(&data, context, frame);
+        view.render_ui(None, &data, context, frame);
+    }
+}
+
+struct TargetEventRoutine {
+    name: &'static str,
+}
+
+impl EventRoutine for TargetEventRoutine {
+    type Return = Option<Coord>;
+    type Data = AppData;
+    type View = AppView;
+    type Event = CommonEvent;
+
+    fn handle<EP>(
+        self,
+        data: &mut Self::Data,
+        _view: &Self::View,
+        event_or_peek: EP,
+    ) -> Handled<Self::Return, Self>
+    where
+        EP: EventOrPeek<Event = Self::Event>,
+    {
+        event_routine::event_or_peek_with_handled(event_or_peek, self, |s, event| {
+            match event {
+                CommonEvent::Input(input) => match input {
+                    Input::Keyboard(key) => {
+                        let delta = match key {
+                            KeyboardInput::Left => Coord::new(-1, 0),
+                            KeyboardInput::Right => Coord::new(1, 0),
+                            KeyboardInput::Up => Coord::new(0, -1),
+                            KeyboardInput::Down => Coord::new(0, 1),
+                            keys::RETURN => {
+                                let cursor = data.cursor;
+                                data.cursor = None;
+                                return Handled::Return(cursor);
+                            }
+                            keys::ESCAPE => {
+                                data.cursor = None;
+                                return Handled::Return(None);
+                            }
+                            _ => Coord::new(0, 0),
+                        };
+                        data.cursor = Some(
+                            data.cursor
+                                .unwrap_or_else(|| data.game_state.player_coord())
+                                + delta,
+                        );
+                    }
+                    Input::Mouse(mouse_input) => match mouse_input {
+                        MouseInput::MouseMove { coord, .. } => data.cursor = Some(coord),
+                        MouseInput::MousePress {
+                            button: MouseButton::Left,
+                            coord,
+                        } => {
+                            data.cursor = None;
+                            return Handled::Return(Some(coord));
+                        }
+                        _ => (),
+                    },
+                },
+                CommonEvent::Frame(_period) => (),
+            };
+            Handled::Continue(s)
+        })
+    }
+
+    fn view<F, C>(
+        &self,
+        data: &Self::Data,
+        view: &mut Self::View,
+        context: ViewContext<C>,
+        frame: &mut F,
+    ) where
+        F: Frame,
+        C: ColModify,
+    {
+        view.game_view.view(&data.game_state, context, frame);
+        view.render_ui(Some(self.name), &data, context, frame);
     }
 }
 
@@ -254,6 +335,7 @@ struct AppData {
     game_state: GameState,
     visibility_algorithm: VisibilityAlgorithm,
     inventory_slot_menu: MenuInstanceChooseOrEscape<InventorySlotMenuEntry>,
+    cursor: Option<Coord>,
 }
 
 impl AppData {
@@ -283,23 +365,44 @@ impl AppData {
             game_state,
             visibility_algorithm,
             inventory_slot_menu,
+            cursor: None,
         }
     }
     fn handle_input(&mut self, input: Input) -> Option<GameReturn> {
         match input {
-            Input::Keyboard(key) => match key {
-                KeyboardInput::Left => self.game_state.maybe_move_player(CardinalDirection::West),
-                KeyboardInput::Right => self.game_state.maybe_move_player(CardinalDirection::East),
-                KeyboardInput::Up => self.game_state.maybe_move_player(CardinalDirection::North),
-                KeyboardInput::Down => self.game_state.maybe_move_player(CardinalDirection::South),
-                KeyboardInput::Char(' ') => self.game_state.wait_player(),
-                KeyboardInput::Char('g') => self.game_state.maybe_player_get_item(),
-                KeyboardInput::Char('i') => return Some(GameReturn::UseItem),
-                KeyboardInput::Char('d') => return Some(GameReturn::DropItem),
-                keys::ESCAPE => return Some(GameReturn::Exit),
+            Input::Keyboard(key) => {
+                match key {
+                    KeyboardInput::Left => {
+                        self.game_state.maybe_move_player(CardinalDirection::West)
+                    }
+                    KeyboardInput::Right => {
+                        self.game_state.maybe_move_player(CardinalDirection::East)
+                    }
+                    KeyboardInput::Up => {
+                        self.game_state.maybe_move_player(CardinalDirection::North)
+                    }
+                    KeyboardInput::Down => {
+                        self.game_state.maybe_move_player(CardinalDirection::South)
+                    }
+                    KeyboardInput::Char(' ') => self.game_state.wait_player(),
+                    KeyboardInput::Char('g') => self.game_state.maybe_player_get_item(),
+                    KeyboardInput::Char('i') => return Some(GameReturn::UseItem),
+                    KeyboardInput::Char('d') => return Some(GameReturn::DropItem),
+                    KeyboardInput::Char('x') => {
+                        if self.cursor.is_none() {
+                            self.cursor = Some(self.game_state.player_coord());
+                        }
+                        return Some(GameReturn::Examine);
+                    }
+                    keys::ESCAPE => return Some(GameReturn::Exit),
+                    _ => (),
+                }
+                self.cursor = None;
+            }
+            Input::Mouse(mouse_input) => match mouse_input {
+                MouseInput::MouseMove { coord, .. } => self.cursor = Some(coord),
                 _ => (),
             },
-            _ => (),
         }
         self.game_state.update_visibility(self.visibility_algorithm);
         if !self.game_state.is_player_alive() {
@@ -329,16 +432,32 @@ impl AppView {
     }
     fn render_ui<F: Frame, C: ColModify>(
         &mut self,
+        name: Option<&'static str>,
         data: &AppData,
         context: ViewContext<C>,
         frame: &mut F,
     ) {
         let player_hit_points = data.game_state.player_hit_points();
         let messages = data.game_state.message_log();
+        let examine_cell = if let Some(cursor) = data.cursor {
+            frame.blend_cell_background_relative(
+                cursor,
+                1,
+                Rgb24::new_grey(255),
+                127,
+                blend_mode::LinearInterpolate,
+                context,
+            );
+            data.game_state.examine_cell(cursor)
+        } else {
+            None
+        };
         self.ui_view.view(
             UiData {
                 player_hit_points,
                 messages,
+                name,
+                examine_cell,
             },
             context.add_offset(Coord::new(0, self.ui_y_offset)),
             frame,
@@ -527,7 +646,9 @@ fn game_over() -> impl EventRoutine<Return = (), Data = AppData, View = AppView,
                 })),
                 frame,
             );
-            event_routine_view.view.render_ui(&data, context, frame);
+            event_routine_view
+                .view
+                .render_ui(None, &data, context, frame);
         }
     }
     Delay::new(Duration::from_millis(2000)).decorated(GameOverDecorate)
@@ -535,13 +656,14 @@ fn game_over() -> impl EventRoutine<Return = (), Data = AppData, View = AppView,
 
 fn game_loop() -> impl EventRoutine<Return = (), Data = AppData, View = AppView, Event = CommonEvent>
 {
-    make_either!(Ei = A | B | C | D);
+    make_either!(Ei = A | B | C | D | E);
     Loop::new(|| {
         GameEventRoutine.and_then(|game_return| match game_return {
             GameReturn::Exit => Ei::A(Value::new(Some(()))),
             GameReturn::GameOver => Ei::B(game_over().map(|()| Some(()))),
             GameReturn::UseItem => Ei::C(use_item().map(|_| None)),
             GameReturn::DropItem => Ei::D(drop_item().map(|_| None)),
+            GameReturn::Examine => Ei::E(TargetEventRoutine { name: "EXAMINE" }.map(|_| None)),
         })
     })
     .return_on_exit(|_| ())

@@ -1,7 +1,7 @@
 use crate::behaviour::{Agent, BehaviourContext, NpcAction};
 use crate::visibility::{CellVisibility, VisibilityAlgorithm, VisibilityGrid};
 use crate::world::{HitPoints, Inventory, ItemType, Location, NpcType, Populate, Tile, World};
-use coord_2d::Size;
+use coord_2d::{Coord, Size};
 use direction::CardinalDirection;
 use entity_table::ComponentTable;
 use entity_table::Entity;
@@ -27,6 +27,14 @@ pub enum LogMessage {
     PlayerHeals,
     PlayerDrops(ItemType),
     NoSpaceToDropItem,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ExamineCell {
+    Npc(NpcType),
+    NpcCorpse(NpcType),
+    Item(ItemType),
+    Player,
 }
 
 pub struct GameState {
@@ -158,6 +166,11 @@ impl GameState {
     pub fn is_player_alive(&self) -> bool {
         self.world.is_living_character(self.player_entity)
     }
+    pub fn player_coord(&self) -> Coord {
+        self.world
+            .entity_coord(self.player_entity)
+            .expect("player has no coord")
+    }
     pub fn player_hit_points(&self) -> HitPoints {
         self.world
             .hit_points(self.player_entity)
@@ -176,5 +189,11 @@ impl GameState {
     }
     pub fn size(&self) -> Size {
         self.world.size()
+    }
+    pub fn examine_cell(&self, coord: Coord) -> Option<ExamineCell> {
+        match self.visibility_grid.cell_visibility(coord) {
+            CellVisibility::Currently => self.world.examine_cell(coord),
+            _ => None,
+        }
     }
 }
