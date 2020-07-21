@@ -77,19 +77,18 @@ impl Room {
         }
     }
 
-    // Place `n` health potions random positions within the room
-    fn place_health_potions<R: Rng>(
-        &self,
-        n: usize,
-        grid: &mut Grid<Option<TerrainTile>>,
-        rng: &mut R,
-    ) {
+    // Place `n` items at random positions within the room
+    fn place_items<R: Rng>(&self, n: usize, grid: &mut Grid<Option<TerrainTile>>, rng: &mut R) {
         for coord in self
             .coords()
             .filter(|&coord| grid.get_checked(coord).unwrap() == TerrainTile::Floor)
             .choose_multiple(rng, n)
         {
-            *grid.get_checked_mut(coord) = Some(TerrainTile::Item(ItemType::HealthPotion));
+            let item = match rng.gen_range(0..100) {
+                0..=100 => ItemType::FireballScroll,
+                _ => ItemType::HealthPotion,
+            };
+            *grid.get_checked_mut(coord) = Some(TerrainTile::Item(item));
         }
     }
 }
@@ -115,7 +114,7 @@ pub fn generate_dungeon<R: Rng>(size: Size, rng: &mut R) -> Grid<TerrainTile> {
     let mut room_centres = Vec::new();
 
     const NPCS_PER_ROOM_DISTRIBUTION: &[usize] = &[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4];
-    const HEALTH_POTIONS_PER_ROOM_DISTRIBUTION: &[usize] = &[0, 0, 1, 1, 1, 1, 1, 2, 2];
+    const ITEMS_PER_ROOM_DISTRIBUTION: &[usize] = &[0, 0, 1, 1, 1, 1, 1, 2, 2];
 
     // Attempt to add a room a constant number of times
     const NUM_ATTEMPTS: usize = 100;
@@ -141,9 +140,9 @@ pub fn generate_dungeon<R: Rng>(size: Size, rng: &mut R) -> Grid<TerrainTile> {
             let &num_npcs = NPCS_PER_ROOM_DISTRIBUTION.choose(rng).unwrap();
             room.place_npcs(num_npcs, &mut grid, rng);
 
-            // Add health potions to the room
-            let &num_health_potions = HEALTH_POTIONS_PER_ROOM_DISTRIBUTION.choose(rng).unwrap();
-            room.place_health_potions(num_health_potions, &mut grid, rng);
+            // Add items to the room
+            let &num_items = ITEMS_PER_ROOM_DISTRIBUTION.choose(rng).unwrap();
+            room.place_items(num_items, &mut grid, rng);
         }
     }
 

@@ -44,12 +44,14 @@ impl Inventory {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ItemType {
     HealthPotion,
+    FireballScroll,
 }
 
 impl ItemType {
     pub fn name(self) -> &'static str {
         match self {
             Self::HealthPotion => "health potion",
+            Self::FireballScroll => "fireball scroll",
         }
     }
 }
@@ -400,6 +402,9 @@ impl World {
                 const HEALTH_TO_HEAL: u32 = 5;
                 hit_points.current = hit_points.max.min(hit_points.current + HEALTH_TO_HEAL);
                 message_log.push(LogMessage::PlayerHeals);
+            }
+            ItemType::FireballScroll => {
+                println!("todo");
             }
         }
         Ok(())
