@@ -144,6 +144,18 @@ impl<'a> View<&'a [LogMessage]> for MessagesView {
                 NoSpaceToDropItem => {
                     write!(&mut buf[0].text, "No space to drop item!").unwrap();
                 }
+                PlayerLaunchesProjectile(projectile) => {
+                    write!(&mut buf[0].text, "You launch a ").unwrap();
+                    write!(&mut buf[1].text, "{}", projectile.name()).unwrap();
+                    buf[1].style.foreground = Some(colours::projectile_colour(projectile));
+                    write!(&mut buf[2].text, "!").unwrap();
+                }
+                NpcDies(npc_type) => {
+                    write!(&mut buf[0].text, "The ").unwrap();
+                    write!(&mut buf[1].text, "{}", npc_type.name()).unwrap();
+                    buf[1].style.foreground = Some(colours::npc_colour(npc_type));
+                    write!(&mut buf[2].text, " dies.").unwrap();
+                }
             }
         }
         const NUM_MESSAGES: usize = 4;

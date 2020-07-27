@@ -1,6 +1,9 @@
 use crate::behaviour::{Agent, BehaviourContext, NpcAction};
 use crate::visibility::{CellVisibility, VisibilityAlgorithm, VisibilityGrid};
-use crate::world::{HitPoints, Inventory, ItemType, Location, NpcType, Populate, Tile, World};
+use crate::world::{
+    HitPoints, Inventory, ItemType, ItemUsage, Location, NpcType, Populate, ProjectileType, Tile,
+    World,
+};
 use coord_2d::{Coord, Size};
 use direction::CardinalDirection;
 use entity_table::ComponentTable;
@@ -27,6 +30,8 @@ pub enum LogMessage {
     PlayerHeals,
     PlayerDrops(ItemType),
     NoSpaceToDropItem,
+    PlayerLaunchesProjectile(ProjectileType),
+    NpcDies(NpcType),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -75,14 +80,23 @@ impl GameState {
         game_state
     }
     pub fn wait_player(&mut self) {
+        if self.has_animations() {
+            return;
+        }
         self.ai_turn();
     }
     pub fn maybe_move_player(&mut self, direction: CardinalDirection) {
+        if self.has_animations() {
+            return;
+        }
         self.world
             .maybe_move_character(self.player_entity, direction, &mut self.message_log);
         self.ai_turn();
     }
     pub fn maybe_player_get_item(&mut self) {
+        if self.has_animations() {
+            return;
+        }
         if self
             .world
             .maybe_get_item(self.player_entity, &mut self.message_log)
@@ -91,14 +105,32 @@ impl GameState {
             self.ai_turn();
         }
     }
-    pub fn maybe_player_use_item(&mut self, inventory_index: usize) -> Result<(), ()> {
+    pub fn maybe_player_use_item(&mut self, inventory_index: usize) -> Result<ItemUsage, ()> {
+        if self.has_animations() {
+            return Err(());
+        }
         let result =
             self.world
                 .maybe_use_item(self.player_entity, inventory_index, &mut self.message_log);
-        if result.is_ok() {
-            self.ai_turn();
+        if let Ok(usage) = result {
+            match usage {
+                ItemUsage::Immediate => self.ai_turn(),
+                ItemUsage::Aim => (),
+            }
         }
         result
+    }
+    pub fn maybe_player_use_item_aim(
+        &mut self,
+        inventory_index: usize,
+        target: Coord,
+    ) -> Result<(), ()> {
+        self.world.maybe_use_item_aim(
+            self.player_entity,
+            inventory_index,
+            target,
+            &mut self.message_log,
+        )
     }
     pub fn maybe_player_drop_item(&mut self, inventory_index: usize) -> Result<(), ()> {
         let result =
@@ -108,6 +140,12 @@ impl GameState {
             self.ai_turn();
         }
         result
+    }
+    pub fn tick_animations(&mut self) {
+        self.world.move_projectiles(&mut self.message_log)
+    }
+    fn has_animations(&self) -> bool {
+        self.world.has_projectiles()
     }
     pub fn entities_to_render<'a>(&'a self) -> impl 'a + Iterator<Item = EntityToRender> {
         let tile_component = &self.world.components.tile;

@@ -4,7 +4,27 @@ use crate::terrain::{self, TerrainTile};
 use coord_2d::{Coord, Size};
 use direction::CardinalDirection;
 use entity_table::{ComponentTable, Entity, EntityAllocator};
+use line_2d::CardinalStepIter;
 use rand::Rng;
+
+#[derive(Clone, Copy)]
+pub enum ItemUsage {
+    Immediate,
+    Aim,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ProjectileType {
+    Fireball,
+}
+
+impl ProjectileType {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Fireball => "fireball",
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Inventory {
@@ -38,6 +58,13 @@ impl Inventory {
         } else {
             Err(InventorySlotIsEmpty)
         }
+    }
+    pub fn get(&self, index: usize) -> Result<Entity, InventorySlotIsEmpty> {
+        self.slots
+            .get(index)
+            .cloned()
+            .flatten()
+            .ok_or(InventorySlotIsEmpty)
     }
 }
 
@@ -92,6 +119,7 @@ pub enum Tile {
     Npc(NpcType),
     NpcCorpse(NpcType),
     Item(ItemType),
+    Projectile(ProjectileType),
 }
 
 entity_table::declare_entity_module! {
@@ -101,6 +129,8 @@ entity_table::declare_entity_module! {
         hit_points: HitPoints,
         item: ItemType,
         inventory: Inventory,
+        trajectory: CardinalStepIter,
+        projectile: ProjectileType,
     }
 }
 
@@ -112,6 +142,7 @@ spatial_table::declare_layers_module! {
         character: Character,
         object: Object,
         feature: Feature,
+        projectile: Projectile,
     }
 }
 
@@ -221,6 +252,25 @@ impl World {
         self.components.tile.insert(entity, Tile::Item(item_type));
         self.components.item.insert(entity, item_type);
     }
+    fn spawn_projectile(&mut self, from: Coord, to: Coord, projectile_type: ProjectileType) {
+        let entity = self.entity_allocator.alloc();
+        self.spatial_table
+            .update(
+                entity,
+                Location {
+                    coord: from,
+                    layer: Some(Layer::Projectile),
+                },
+            )
+            .unwrap();
+        self.components
+            .tile
+            .insert(entity, Tile::Projectile(projectile_type));
+        self.components.projectile.insert(entity, projectile_type);
+        self.components
+            .trajectory
+            .insert(entity, CardinalStepIter::new(to - from));
+    }
     pub fn populate<R: Rng>(&mut self, rng: &mut R) -> Populate {
         let terrain = terrain::generate_dungeon(self.spatial_table.grid_size(), rng);
         let mut player_entity = None;
@@ -307,9 +357,11 @@ impl World {
         }
     }
     fn character_bump_attack(&mut self, victim: Entity) -> Option<VictimDies> {
-        const DAMAGE: u32 = 1;
+        self.character_damage(victim, 1)
+    }
+    fn character_damage(&mut self, victim: Entity, damage: u32) -> Option<VictimDies> {
         if let Some(hit_points) = self.components.hit_points.get_mut(victim) {
-            hit_points.current = hit_points.current.saturating_sub(DAMAGE);
+            hit_points.current = hit_points.current.saturating_sub(damage);
             if hit_points.current == 0 {
                 self.character_die(victim);
                 return Some(VictimDies);
@@ -374,13 +426,13 @@ impl World {
         character: Entity,
         inventory_index: usize,
         message_log: &mut Vec<LogMessage>,
-    ) -> Result<(), ()> {
+    ) -> Result<ItemUsage, ()> {
         let inventory = self
             .components
             .inventory
             .get_mut(character)
             .expect("character has no inventory");
-        let item = match inventory.remove(inventory_index) {
+        let item = match inventory.get(inventory_index) {
             Ok(item) => item,
             Err(InventorySlotIsEmpty) => {
                 message_log.push(LogMessage::NoItemInInventorySlot);
@@ -392,7 +444,7 @@ impl World {
             .item
             .get(item)
             .expect("non-item in inventory");
-        match item_type {
+        let usage = match item_type {
             ItemType::HealthPotion => {
                 let mut hit_points = self
                     .components
@@ -401,10 +453,39 @@ impl World {
                     .expect("character has no hit points");
                 const HEALTH_TO_HEAL: u32 = 5;
                 hit_points.current = hit_points.max.min(hit_points.current + HEALTH_TO_HEAL);
+                inventory.remove(inventory_index).unwrap();
                 message_log.push(LogMessage::PlayerHeals);
+                ItemUsage::Immediate
             }
+            ItemType::FireballScroll => ItemUsage::Aim,
+        };
+        Ok(usage)
+    }
+    pub fn maybe_use_item_aim(
+        &mut self,
+        character: Entity,
+        inventory_index: usize,
+        target: Coord,
+        message_log: &mut Vec<LogMessage>,
+    ) -> Result<(), ()> {
+        let character_coord = self.spatial_table.coord_of(character).unwrap();
+        if character_coord == target {
+            return Err(());
+        }
+        let inventory = self
+            .components
+            .inventory
+            .get_mut(character)
+            .expect("character has no inventory");
+        let item_entity = inventory.remove(inventory_index).unwrap();
+        let &item_type = self.components.item.get(item_entity).unwrap();
+        match item_type {
+            ItemType::HealthPotion => panic!("invalid item for aim"),
             ItemType::FireballScroll => {
-                println!("todo");
+                message_log.push(LogMessage::PlayerLaunchesProjectile(
+                    ProjectileType::Fireball,
+                ));
+                self.spawn_projectile(character_coord, target, ProjectileType::Fireball);
             }
         }
         Ok(())
@@ -451,6 +532,48 @@ impl World {
             .expect("non-item in inventory");
         message_log.push(LogMessage::PlayerDrops(item_type));
         Ok(())
+    }
+    pub fn move_projectiles(&mut self, message_log: &mut Vec<LogMessage>) {
+        let mut entities_to_remove = Vec::new();
+        let mut fireball_hit = Vec::new();
+        for (entity, trajectory) in self.components.trajectory.iter_mut() {
+            if let Some(direction) = trajectory.next() {
+                let current_coord = self.spatial_table.coord_of(entity).unwrap();
+                let new_coord = current_coord + direction.coord();
+                let dest_layers = self.spatial_table.layers_at_checked(new_coord);
+                if dest_layers.feature.is_some() {
+                    entities_to_remove.push(entity);
+                } else if let Some(character) = dest_layers.character {
+                    entities_to_remove.push(entity);
+                    if let Some(&projectile_type) = self.components.projectile.get(entity) {
+                        match projectile_type {
+                            ProjectileType::Fireball => {
+                                fireball_hit.push(character);
+                            }
+                        }
+                    }
+                }
+
+                // ignore collisiosns of projectiles
+                let _ = self.spatial_table.update_coord(entity, new_coord);
+            } else {
+                entities_to_remove.push(entity);
+            }
+        }
+        for entity in entities_to_remove {
+            self.remove_entity(entity);
+        }
+        for entity in fireball_hit {
+            let maybe_npc = self.components.npc_type.get(entity).cloned();
+            if let Some(VictimDies) = self.character_damage(entity, 2) {
+                if let Some(npc) = maybe_npc {
+                    message_log.push(LogMessage::NpcDies(npc));
+                }
+            }
+        }
+    }
+    pub fn has_projectiles(&self) -> bool {
+        !self.components.trajectory.is_empty()
     }
     pub fn inventory(&self, entity: Entity) -> Option<&Inventory> {
         self.components.inventory.get(entity)
