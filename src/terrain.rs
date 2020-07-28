@@ -85,7 +85,8 @@ impl Room {
             .choose_multiple(rng, n)
         {
             let item = match rng.gen_range(0..100) {
-                0..=100 => ItemType::FireballScroll,
+                0..=29 => ItemType::FireballScroll,
+                30..=49 => ItemType::ConfusionScroll,
                 _ => ItemType::HealthPotion,
             };
             *grid.get_checked_mut(coord) = Some(TerrainTile::Item(item));

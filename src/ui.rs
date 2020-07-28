@@ -156,6 +156,18 @@ impl<'a> View<&'a [LogMessage]> for MessagesView {
                     buf[1].style.foreground = Some(colours::npc_colour(npc_type));
                     write!(&mut buf[2].text, " dies.").unwrap();
                 }
+                NpcBecomesConfused(npc_type) => {
+                    write!(&mut buf[0].text, "The ").unwrap();
+                    write!(&mut buf[1].text, "{}", npc_type.name()).unwrap();
+                    buf[1].style.foreground = Some(colours::npc_colour(npc_type));
+                    write!(&mut buf[2].text, " is confused.").unwrap();
+                }
+                NpcIsNoLongerConfused(npc_type) => {
+                    write!(&mut buf[0].text, "The ").unwrap();
+                    write!(&mut buf[1].text, "{}", npc_type.name()).unwrap();
+                    buf[1].style.foreground = Some(colours::npc_colour(npc_type));
+                    write!(&mut buf[2].text, "'s confusion passes.").unwrap();
+                }
             }
         }
         const NUM_MESSAGES: usize = 4;

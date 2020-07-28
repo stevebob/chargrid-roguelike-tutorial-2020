@@ -485,6 +485,7 @@ pub mod colours {
     pub const TROLL: Rgb24 = Rgb24::new(187, 0, 0);
     pub const HEALTH_POTION: Rgb24 = Rgb24::new(255, 0, 255);
     pub const FIREBALL_SCROLL: Rgb24 = Rgb24::new(255, 127, 0);
+    pub const CONFUSION_SCROLL: Rgb24 = Rgb24::new(187, 0, 255);
 
     pub fn npc_colour(npc_type: NpcType) -> Rgb24 {
         match npc_type {
@@ -497,12 +498,14 @@ pub mod colours {
         match item_type {
             ItemType::HealthPotion => HEALTH_POTION,
             ItemType::FireballScroll => FIREBALL_SCROLL,
+            ItemType::ConfusionScroll => CONFUSION_SCROLL,
         }
     }
 
     pub fn projectile_colour(projcetile_type: ProjectileType) -> Rgb24 {
         match projcetile_type {
             ProjectileType::Fireball => FIREBALL_SCROLL,
+            ProjectileType::Confusion => CONFUSION_SCROLL,
         }
     }
 }
@@ -545,9 +548,15 @@ fn currently_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
         Tile::Item(ItemType::FireballScroll) => ViewCell::new()
             .with_character('♫')
             .with_foreground(colours::FIREBALL_SCROLL),
+        Tile::Item(ItemType::ConfusionScroll) => ViewCell::new()
+            .with_character('♫')
+            .with_foreground(colours::CONFUSION_SCROLL),
         Tile::Projectile(ProjectileType::Fireball) => ViewCell::new()
             .with_character('*')
             .with_foreground(colours::FIREBALL_SCROLL),
+        Tile::Projectile(ProjectileType::Confusion) => ViewCell::new()
+            .with_character('*')
+            .with_foreground(colours::CONFUSION_SCROLL),
     }
 }
 

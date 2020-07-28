@@ -13,7 +13,7 @@ chargrid = "0.4"
 coord_2d = "0.3"
 grid_2d = "0.15"
 rgb24 = "0.3"
-direction = "0.18"
+direction = { version = "0.18", features = ["rand"] }
 entity_table = "0.2"
 spatial_table = "0.3"
 rand = "0.8"
