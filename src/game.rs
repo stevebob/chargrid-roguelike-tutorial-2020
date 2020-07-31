@@ -10,6 +10,7 @@ use entity_table::ComponentTable;
 use entity_table::Entity;
 use rand::SeedableRng;
 use rand_isaac::Isaac64Rng;
+use serde::{Deserialize, Serialize};
 
 pub struct EntityToRender {
     pub tile: Tile,
@@ -17,7 +18,7 @@ pub struct EntityToRender {
     pub visibility: CellVisibility,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum LogMessage {
     PlayerAttacksNpc(NpcType),
     NpcAttacksPlayer(NpcType),
@@ -44,6 +45,7 @@ pub enum ExamineCell {
     Player,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct GameState {
     world: World,
     player_entity: Entity,

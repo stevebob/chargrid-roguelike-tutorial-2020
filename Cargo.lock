@@ -220,6 +220,7 @@ dependencies = [
  "rand 0.8.4",
  "rand_isaac",
  "rgb24",
+ "serde",
  "shadowcast",
  "spatial_table",
 ]
@@ -241,6 +242,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "525b6fc92c6acedab1fe2a2de591455a2bad0c21ed860318d78dc515e843b285"
 dependencies = [
  "chargrid_render",
+ "serde",
 ]
 
 [[package]]
@@ -278,6 +280,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e01a68f597d13b6874eaa32eecc2d97a5033cee1ceabb4583e57c2220c33a3fe"
 dependencies = [
  "coord_2d",
+ "serde",
 ]
 
 [[package]]
@@ -290,6 +293,7 @@ dependencies = [
  "chargrid_input",
  "chargrid_render",
  "chargrid_text",
+ "serde",
 ]
 
 [[package]]
@@ -301,6 +305,7 @@ dependencies = [
  "coord_2d",
  "grid_2d",
  "rgb24",
+ "serde",
 ]
 
 [[package]]
@@ -310,6 +315,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11f614a5e0abbf8fbb036aa9cb089f4cb343ed59fea0d544aa80ed339fcf5005"
 dependencies = [
  "chargrid_render",
+ "serde",
 ]
 
 [[package]]
@@ -387,6 +393,9 @@ name = "coord_2d"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07f99fe5c9db0bab19f2283c51056ea11ae34bb3f0d85999015402510b79fec9"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "copyless"
@@ -609,6 +618,7 @@ checksum = "925bba9d6b6393108f00b69c0a0798bb5e3ca8fd077c06e6e89c015e85d02ec4"
 dependencies = [
  "coord_2d",
  "rand 0.8.4",
+ "serde",
 ]
 
 [[package]]
@@ -661,6 +671,9 @@ name = "entity_table"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "307e0dceba564133805a19e82c2366c87ab797112aaa08ecb79597e00d6fc1ed"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "external-memory"
@@ -1025,6 +1038,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33baf41f2c0a62a5d3bdc726002f09afd2266d422f530c1ea170830e5624e066"
 dependencies = [
  "coord_2d",
+ "serde",
 ]
 
 [[package]]
@@ -1047,6 +1061,7 @@ dependencies = [
  "coord_2d",
  "direction",
  "grid_search_cardinal_common",
+ "serde",
 ]
 
 [[package]]
@@ -1057,6 +1072,7 @@ checksum = "5bb3c749643f0f72e13d439c92fe516f6f4d506cac0cc1107e45772fe5596abb"
 dependencies = [
  "direction",
  "grid_2d",
+ "serde",
 ]
 
 [[package]]
@@ -1068,6 +1084,7 @@ dependencies = [
  "direction",
  "grid_2d",
  "grid_search_cardinal_common",
+ "serde",
 ]
 
 [[package]]
@@ -1079,6 +1096,7 @@ dependencies = [
  "coord_2d",
  "direction",
  "grid_search_cardinal_common",
+ "serde",
 ]
 
 [[package]]
@@ -1210,6 +1228,7 @@ checksum = "2027de8b03f35d92ba5764e5c9164e6d0a8710ba6a3d89b5fd263345354c3fd4"
 dependencies = [
  "coord_2d",
  "direction",
+ "serde",
 ]
 
 [[package]]
@@ -1703,6 +1722,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 dependencies = [
  "getrandom 0.2.3",
+ "serde",
 ]
 
 [[package]]
@@ -1730,6 +1750,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fac4373cd91b4f55722c553fb0f286edbb81ef3ff6eec7b99d1898a4110a0b28"
 dependencies = [
  "rand_core 0.6.3",
+ "serde",
 ]
 
 [[package]]
@@ -1792,6 +1813,9 @@ name = "rgb24"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "005408710cf791a01c3b1c8ff17cb7d2ac66476b4ca21001970c946660e6509f"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "rose_tree"
@@ -1868,6 +1892,7 @@ dependencies = [
  "coord_2d",
  "direction",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1915,6 +1940,7 @@ checksum = "0dd34a8ad33d889b16ba63b9d2c72b4b0b078e9c80ca0772afd98a8c519b5242"
 dependencies = [
  "entity_table",
  "grid_2d",
+ "serde",
 ]
 
 [[package]]

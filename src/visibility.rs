@@ -1,6 +1,7 @@
 use crate::world::World;
 use coord_2d::{Coord, Size};
 use grid_2d::Grid;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug)]
 pub enum VisibilityAlgorithm {
@@ -25,6 +26,7 @@ impl shadowcast::InputGrid for Visibility {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 struct VisibilityCell {
     last_seen: u64,
 }
@@ -41,6 +43,7 @@ pub enum CellVisibility {
     Never,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct VisibilityGrid {
     grid: Grid<VisibilityCell>,
     count: u64,

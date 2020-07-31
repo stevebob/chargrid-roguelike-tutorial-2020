@@ -9,16 +9,17 @@ lto = true
 
 [dependencies]
 chargrid_graphical = "0.7"
-chargrid = "0.4"
-coord_2d = "0.3"
-grid_2d = "0.15"
-rgb24 = "0.3"
-direction = { version = "0.18", features = ["rand"] }
-entity_table = "0.2"
-spatial_table = "0.3"
+chargrid = { version = "0.4", features = ["serialize"] }
+coord_2d = { version = "0.3", features = ["serialize"] }
+grid_2d = { version = "0.15", features = ["serialize"] }
+rgb24 = { version = "0.3", features = ["serialize"] }
+direction = { version = "0.18", features = ["rand", "serialize"] }
+entity_table = { version = "0.2", features = ["serialize"] }
+spatial_table = { version = "0.3", features = ["serialize"] }
 rand = "0.8"
-rand_isaac = "0.3"
-shadowcast = "0.8"
+rand_isaac = { version = "0.3", features = ["serde1"] }
+shadowcast = { version = "0.8", features = ["serialize"] }
 meap = "0.4"
-grid_search_cardinal = "0.3"
-line_2d = "0.5"
+grid_search_cardinal = { version = "0.3", features = ["serialize"] }
+line_2d = { version = "0.5", features = ["serialize"] }
+serde = { version = "1.0", features = ["serde_derive"] }
