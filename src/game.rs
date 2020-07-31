@@ -63,6 +63,7 @@ impl GameState {
         rng_seed: u64,
         initial_visibility_algorithm: VisibilityAlgorithm,
     ) -> Self {
+        println!("RNG Seed: {}", rng_seed);
         let mut world = World::new(screen_size);
         let mut rng = Isaac64Rng::seed_from_u64(rng_seed);
         let Populate {

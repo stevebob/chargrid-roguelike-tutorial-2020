@@ -40,7 +40,6 @@ fn main() {
         rng_seed,
         visibility_algorithm,
     } = Args::parser().with_help_default().parse_env_or_exit();
-    println!("RNG Seed: {}", rng_seed);
     const CELL_SIZE_PX: f64 = 24.;
     let context = Context::new(Config {
         font_bytes: FontBytes {

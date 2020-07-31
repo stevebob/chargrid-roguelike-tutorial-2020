@@ -23,3 +23,4 @@ meap = "0.4"
 grid_search_cardinal = { version = "0.3", features = ["serialize"] }
 line_2d = { version = "0.5", features = ["serialize"] }
 serde = { version = "1.0", features = ["serde_derive"] }
+maplit = "1.0"
