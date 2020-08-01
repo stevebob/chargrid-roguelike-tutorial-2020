@@ -23,6 +23,7 @@ use chargrid::{
 };
 use coord_2d::{Coord, Size};
 use direction::CardinalDirection;
+use general_storage_file::{format, FileStorage, IfDirectoryMissing, Storage};
 use maplit::hashmap;
 use rgb24::Rgb24;
 use std::collections::HashMap;
@@ -31,18 +32,22 @@ use std::time::Duration;
 const UI_NUM_ROWS: u32 = 5;
 const BETWEEN_ANIMATION_TICKS: Duration = Duration::from_millis(33);
 
+const SAVE_DIR: &str = "save";
+const SAVE_FILE: &str = "save";
+const SAVE_FORMAT: format::Compress<format::Json> = format::Compress(format::Json);
+
 #[derive(Clone, Copy, Debug)]
 enum MainMenuEntry {
     NewGame,
     Resume,
-    Quit,
+    SaveAndQuit,
 }
 
 fn main_menu_instance() -> MenuInstanceChooseOrEscape<MainMenuEntry> {
     use MainMenuEntry::*;
     MenuInstanceBuilder {
-        items: vec![Resume, NewGame, Quit],
-        hotkeys: Some(hashmap!['r' => Resume, 'n' => NewGame, 'q' => Quit]),
+        items: vec![Resume, NewGame, SaveAndQuit],
+        hotkeys: Some(hashmap!['r' => Resume, 'n' => NewGame, 'q' => SaveAndQuit]),
         selected_index: 0,
     }
     .build()
@@ -83,7 +88,7 @@ impl<'a> View<&'a AppData> for MainMenuView {
             let text = match entry {
                 MainMenuEntry::Resume => "(r) Resume",
                 MainMenuEntry::NewGame => "(n) New Game",
-                MainMenuEntry::Quit => "(q) Quit",
+                MainMenuEntry::SaveAndQuit => "(q) Save and Quit",
             };
             let size = StringViewSingleLine::new(style).view_size(
                 format!("{} {}", prefix, text),
@@ -550,6 +555,24 @@ impl AppData {
             self.visibility_algorithm,
         );
     }
+    fn save_game(&self) {
+        let mut file_storage = match FileStorage::next_to_exe(SAVE_DIR, IfDirectoryMissing::Create)
+        {
+            Ok(file_storage) => file_storage,
+            Err(error) => {
+                eprintln!("Failed to save game: {:?}", error);
+                return;
+            }
+        };
+        println!("Saving to {:?}", file_storage.full_path(SAVE_FILE));
+        match file_storage.store(SAVE_FILE, &self.game_state, SAVE_FORMAT) {
+            Ok(()) => (),
+            Err(error) => {
+                eprintln!("Failed to save game: {:?}", error);
+                return;
+            }
+        }
+    }
     fn handle_input(&mut self, input: Input) -> Option<GameReturn> {
         match input {
             Input::Keyboard(key) => {
@@ -890,11 +913,16 @@ fn game_loop() -> impl EventRoutine<Return = (), Data = AppData, View = AppView,
     Loop::new(|| {
         GameEventRoutine.and_then(|game_return| match game_return {
             GameReturn::Menu => Ei::A(main_menu().and_then(|choice| {
-                make_either!(Ei = A | B);
+                make_either!(Ei = A | B | C);
                 match choice {
                     Err(menu::Escape) => Ei::A(Value::new(None)),
                     Ok(MainMenuEntry::Resume) => Ei::A(Value::new(None)),
-                    Ok(MainMenuEntry::Quit) => Ei::A(Value::new(Some(()))),
+                    Ok(MainMenuEntry::SaveAndQuit) => {
+                        Ei::C(SideEffect::new_with_view(|data: &mut AppData, _: &_| {
+                            data.save_game();
+                            Some(())
+                        }))
+                    }
                     Ok(MainMenuEntry::NewGame) => {
                         Ei::B(SideEffect::new_with_view(|data: &mut AppData, _: &_| {
                             data.new_game();
@@ -914,7 +942,7 @@ fn game_loop() -> impl EventRoutine<Return = (), Data = AppData, View = AppView,
             GameReturn::Examine => Ei::E(TargetEventRoutine { name: "EXAMINE" }.map(|_| None)),
         })
     })
-    .return_on_exit(|_| ())
+    .return_on_exit(|data| data.save_game())
 }
 
 pub fn app(
