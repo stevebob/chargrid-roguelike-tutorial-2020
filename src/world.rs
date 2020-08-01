@@ -8,6 +8,11 @@ use line_2d::CardinalStepIter;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
+pub struct CharacterData {
+    entity_data: EntityData,
+    inventory_entity_data: Vec<Option<EntityData>>,
+}
+
 #[derive(Clone, Copy)]
 pub enum ItemUsage {
     Immediate,
@@ -143,6 +148,7 @@ entity_table::declare_entity_module! {
 }
 
 use components::Components;
+pub use components::EntityData;
 
 spatial_table::declare_layers_module! {
     layers {
@@ -182,6 +188,11 @@ impl World {
             components,
             spatial_table,
         }
+    }
+    pub fn clear(&mut self) {
+        self.entity_allocator.clear();
+        self.components.clear();
+        self.spatial_table.clear();
     }
     fn spawn_wall(&mut self, coord: Coord) {
         let entity = self.entity_allocator.alloc();
@@ -710,5 +721,64 @@ impl World {
                         _ => None,
                     })
             })
+    }
+    fn remove_entity_data(&mut self, entity: Entity) -> EntityData {
+        self.entity_allocator.free(entity);
+        self.spatial_table.remove(entity);
+        self.components.remove_entity_data(entity)
+    }
+    pub fn remove_character(&mut self, entity: Entity) -> CharacterData {
+        let mut entity_data = self.remove_entity_data(entity);
+        // Remove the inventory from the character. An inventory contains entities referring data
+        // in the current world. These data will also be removed here, and combined with the
+        // `EntityData` of the character to form a `CharacterData`. When the `CharacterData` is
+        // re-inserted into the world, the inventory item data will be inserted first, at which
+        // point each item will be assigned a fresh entity. The character will get a brand new
+        // inventory containing the new entities.
+        let inventory_entity_data = entity_data
+            .inventory
+            .take()
+            .expect("character missing inventory")
+            .slots()
+            .iter()
+            .map(|maybe_slot| maybe_slot.map(|entity| self.remove_entity_data(entity)))
+            .collect::<Vec<_>>();
+        CharacterData {
+            entity_data,
+            inventory_entity_data,
+        }
+    }
+    pub fn replace_character(
+        &mut self,
+        entity: Entity,
+        CharacterData {
+            mut entity_data,
+            inventory_entity_data,
+        }: CharacterData,
+    ) {
+        // Before inserting the character's data, create new entities to contain each item in the
+        // character's inventory.
+        let inventory_slots = inventory_entity_data
+            .into_iter()
+            .map(|maybe_entity_data| {
+                maybe_entity_data.map(|entity_data| {
+                    let entity = self.entity_allocator.alloc();
+                    self.components.update_entity_data(entity, entity_data);
+                    entity
+                })
+            })
+            .collect::<Vec<_>>();
+        // Make a new inventory containing the newly created entities, and add it to the character.
+        entity_data.inventory = Some(Inventory {
+            slots: inventory_slots,
+        });
+        self.components.update_entity_data(entity, entity_data);
+    }
+    pub fn coord_contains_stairs(&self, coord: Coord) -> bool {
+        self.spatial_table
+            .layers_at_checked(coord)
+            .floor
+            .map(|floor_entity| self.components.stairs.contains(floor_entity))
+            .unwrap_or(false)
     }
 }

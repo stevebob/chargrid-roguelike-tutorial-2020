@@ -610,6 +610,7 @@ impl AppData {
                     KeyboardInput::Down => {
                         self.game_state.maybe_move_player(CardinalDirection::South)
                     }
+                    KeyboardInput::Char('>') => self.game_state.maybe_player_descend(),
                     KeyboardInput::Char(' ') => self.game_state.wait_player(),
                     KeyboardInput::Char('g') => self.game_state.maybe_player_get_item(),
                     KeyboardInput::Char('i') => return Some(GameReturn::UseItem),

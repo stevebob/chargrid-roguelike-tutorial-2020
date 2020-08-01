@@ -69,6 +69,12 @@ impl VisibilityGrid {
             CellVisibility::Never
         }
     }
+    pub fn clear(&mut self) {
+        self.count = 1;
+        for cell in self.grid.iter_mut() {
+            *cell = Default::default();
+        }
+    }
     pub fn update(
         &mut self,
         player_coord: Coord,
