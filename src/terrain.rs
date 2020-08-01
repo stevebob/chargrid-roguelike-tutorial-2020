@@ -9,6 +9,7 @@ pub enum TerrainTile {
     Wall,
     Npc(NpcType),
     Item(ItemType),
+    Stairs,
 }
 
 // A rectangular area of the map
@@ -151,6 +152,9 @@ pub fn generate_dungeon<R: Rng>(size: Size, rng: &mut R) -> Grid<TerrainTile> {
     for window in room_centres.windows(2) {
         carve_corridor(window[0], window[1], &mut grid);
     }
+
+    // Add stairs to the centre of the last room placed
+    *grid.get_checked_mut(*room_centres.last().unwrap()) = Some(TerrainTile::Stairs);
 
     grid.map(|t| t.unwrap_or(TerrainTile::Wall))
 }

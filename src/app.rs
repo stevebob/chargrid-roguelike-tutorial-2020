@@ -737,6 +737,11 @@ fn currently_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
             .with_character('.')
             .with_foreground(Rgb24::new_grey(63))
             .with_background(Rgb24::new(0, 0, 63)),
+        Tile::Stairs => ViewCell::new()
+            .with_character('>')
+            .with_bold(true)
+            .with_foreground(Rgb24::new_grey(255))
+            .with_background(Rgb24::new(0, 0, 63)),
         Tile::Wall => ViewCell::new()
             .with_character('#')
             .with_foreground(Rgb24::new(0, 63, 63))

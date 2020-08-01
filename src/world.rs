@@ -125,6 +125,7 @@ pub enum Tile {
     NpcCorpse(NpcType),
     Item(ItemType),
     Projectile(ProjectileType),
+    Stairs,
 }
 
 entity_table::declare_entity_module! {
@@ -137,6 +138,7 @@ entity_table::declare_entity_module! {
         trajectory: CardinalStepIter,
         projectile: ProjectileType,
         confusion_countdown: u32,
+        stairs: (),
     }
 }
 
@@ -278,6 +280,20 @@ impl World {
             .trajectory
             .insert(entity, CardinalStepIter::new(to - from));
     }
+    fn spawn_stairs(&mut self, coord: Coord) {
+        let entity = self.entity_allocator.alloc();
+        self.spatial_table
+            .update(
+                entity,
+                Location {
+                    coord,
+                    layer: Some(Layer::Floor),
+                },
+            )
+            .unwrap();
+        self.components.tile.insert(entity, Tile::Stairs);
+        self.components.stairs.insert(entity, ());
+    }
     pub fn populate<R: Rng>(&mut self, rng: &mut R) -> Populate {
         let terrain = terrain::generate_dungeon(self.spatial_table.grid_size(), rng);
         let mut player_entity = None;
@@ -289,6 +305,7 @@ impl World {
                     player_entity = Some(self.spawn_player(coord));
                 }
                 TerrainTile::Floor => self.spawn_floor(coord),
+                TerrainTile::Stairs => self.spawn_stairs(coord),
                 TerrainTile::Wall => {
                     self.spawn_floor(coord);
                     self.spawn_wall(coord);
