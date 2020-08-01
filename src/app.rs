@@ -516,7 +516,8 @@ struct AppData {
 impl AppData {
     fn new(screen_size: Size, rng_seed: u64, visibility_algorithm: VisibilityAlgorithm) -> Self {
         let game_area_size = screen_size.set_height(screen_size.height() - UI_NUM_ROWS);
-        let game_state = GameState::new(game_area_size, rng_seed, visibility_algorithm);
+        let game_state = Self::load_game()
+            .unwrap_or_else(|| GameState::new(game_area_size, rng_seed, visibility_algorithm));
         let player_inventory = game_state.player_inventory();
         let inventory_slot_menu = {
             let items = (0..player_inventory.slots().len())
@@ -570,6 +571,26 @@ impl AppData {
             Err(error) => {
                 eprintln!("Failed to save game: {:?}", error);
                 return;
+            }
+        }
+    }
+    fn load_game() -> Option<GameState> {
+        let file_storage = match FileStorage::next_to_exe(SAVE_DIR, IfDirectoryMissing::Create) {
+            Ok(file_storage) => file_storage,
+            Err(error) => {
+                eprintln!("Failed to load game: {:?}", error);
+                return None;
+            }
+        };
+        if !file_storage.exists(SAVE_FILE) {
+            return None;
+        }
+        println!("Loading from {:?}", file_storage.full_path(SAVE_FILE));
+        match file_storage.load(SAVE_FILE, SAVE_FORMAT) {
+            Ok(game_state) => Some(game_state),
+            Err(error) => {
+                eprintln!("Failed to load game: {:?}", error);
+                None
             }
         }
     }
