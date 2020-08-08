@@ -47,6 +47,14 @@ pub enum ExamineCell {
     Player,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum LevelUp {
+    Strength,
+    Dexterity,
+    Intelligence,
+    Health,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct GameState {
     world: World,
@@ -93,7 +101,9 @@ impl GameState {
         game_state.update_visibility(initial_visibility_algorithm);
         game_state
     }
-    fn player_descend(&mut self) {
+    pub fn player_level_up_and_descend(&mut self, level_up: LevelUp) {
+        assert!(self.is_player_on_stairs());
+        self.world.level_up_character(self.player_entity, level_up);
         let player_data = self.world.remove_character(self.player_entity);
         self.world.clear();
         self.visibility_grid.clear();
@@ -106,10 +116,8 @@ impl GameState {
         self.player_entity = player_entity;
         self.ai_state = ai_state;
     }
-    pub fn maybe_player_descend(&mut self) {
-        if self.world.coord_contains_stairs(self.player_coord()) {
-            self.player_descend();
-        }
+    pub fn is_player_on_stairs(&self) -> bool {
+        self.world.coord_contains_stairs(self.player_coord())
     }
     pub fn wait_player(&mut self) {
         if self.has_animations() {

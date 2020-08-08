@@ -1,5 +1,5 @@
 use crate::behaviour::Agent;
-use crate::game::{ExamineCell, LogMessage};
+use crate::game::{ExamineCell, LevelUp, LogMessage};
 use crate::terrain::{self, TerrainTile};
 use coord_2d::{Coord, Size};
 use direction::CardinalDirection;
@@ -833,5 +833,40 @@ impl World {
     }
     pub fn intelligence(&self, entity: Entity) -> Option<i32> {
         self.components.intelligence.get(entity).cloned()
+    }
+    pub fn level_up_character(&mut self, character_entity: Entity, level_up: LevelUp) {
+        match level_up {
+            LevelUp::Strength => {
+                *self
+                    .components
+                    .strength
+                    .get_mut(character_entity)
+                    .expect("character lacks strength") += 1;
+            }
+            LevelUp::Dexterity => {
+                *self
+                    .components
+                    .dexterity
+                    .get_mut(character_entity)
+                    .expect("character lacks dexterity") += 1;
+            }
+            LevelUp::Intelligence => {
+                *self
+                    .components
+                    .intelligence
+                    .get_mut(character_entity)
+                    .expect("character lacks intelligence") += 1;
+            }
+            LevelUp::Health => {
+                let hit_points = self
+                    .components
+                    .hit_points
+                    .get_mut(character_entity)
+                    .expect("character lacks hit points");
+                const INCREASE: u32 = 5;
+                hit_points.current += INCREASE;
+                hit_points.max += INCREASE;
+            }
+        }
     }
 }
