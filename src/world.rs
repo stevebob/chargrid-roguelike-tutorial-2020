@@ -144,6 +144,10 @@ entity_table::declare_entity_module! {
         projectile: ProjectileType,
         confusion_countdown: u32,
         stairs: (),
+        base_damage: i32,
+        strength: i32,
+        dexterity: i32,
+        intelligence: i32,
     }
 }
 
@@ -235,6 +239,10 @@ impl World {
         self.components
             .hit_points
             .insert(entity, HitPoints::new_full(20));
+        self.components.base_damage.insert(entity, 1);
+        self.components.strength.insert(entity, 1);
+        self.components.dexterity.insert(entity, 1);
+        self.components.intelligence.insert(entity, 1);
         self.components.inventory.insert(entity, Inventory::new(10));
         entity
     }
@@ -256,6 +264,13 @@ impl World {
             NpcType::Troll => HitPoints::new_full(6),
         };
         self.components.hit_points.insert(entity, hit_points);
+        self.components.base_damage.insert(entity, 1);
+        let (strength, dexterity) = match npc_type {
+            NpcType::Orc => (1, 1),
+            NpcType::Troll => (2, 0),
+        };
+        self.components.strength.insert(entity, strength);
+        self.components.dexterity.insert(entity, dexterity);
         entity
     }
     fn spawn_item(&mut self, coord: Coord, item_type: ItemType) {
@@ -780,5 +795,14 @@ impl World {
             .floor
             .map(|floor_entity| self.components.stairs.contains(floor_entity))
             .unwrap_or(false)
+    }
+    pub fn strength(&self, entity: Entity) -> Option<i32> {
+        self.components.strength.get(entity).cloned()
+    }
+    pub fn dexterity(&self, entity: Entity) -> Option<i32> {
+        self.components.dexterity.get(entity).cloned()
+    }
+    pub fn intelligence(&self, entity: Entity) -> Option<i32> {
+        self.components.intelligence.get(entity).cloned()
     }
 }

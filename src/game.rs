@@ -56,6 +56,7 @@ pub struct GameState {
     message_log: Vec<LogMessage>,
     rng: Isaac64Rng,
     screen_size: Size,
+    dungeon_level: u32,
 }
 
 impl GameState {
@@ -67,6 +68,7 @@ impl GameState {
         println!("RNG Seed: {}", rng_seed);
         let mut world = World::new(screen_size);
         let mut rng = Isaac64Rng::seed_from_u64(rng_seed);
+        let dungeon_level = 1;
         let Populate {
             player_entity,
             ai_state,
@@ -84,6 +86,7 @@ impl GameState {
             message_log: Vec::new(),
             rng,
             screen_size,
+            dungeon_level,
         };
         game_state.update_visibility(initial_visibility_algorithm);
         game_state
@@ -92,6 +95,7 @@ impl GameState {
         let player_data = self.world.remove_character(self.player_entity);
         self.world.clear();
         self.visibility_grid.clear();
+        self.dungeon_level += 1;
         let Populate {
             player_entity,
             ai_state,
@@ -265,5 +269,23 @@ impl GameState {
             CellVisibility::Currently => self.world.examine_cell(coord),
             _ => None,
         }
+    }
+    pub fn player_strength(&self) -> i32 {
+        self.world
+            .strength(self.player_entity)
+            .expect("player missing strength")
+    }
+    pub fn player_dexterity(&self) -> i32 {
+        self.world
+            .dexterity(self.player_entity)
+            .expect("player missing dexterity")
+    }
+    pub fn player_intelligence(&self) -> i32 {
+        self.world
+            .intelligence(self.player_entity)
+            .expect("player missing intelligence")
+    }
+    pub fn dungeon_level(&self) -> u32 {
+        self.dungeon_level
     }
 }
