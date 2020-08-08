@@ -21,15 +21,15 @@ pub enum ItemUsage {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ProjectileType {
-    Fireball,
-    Confusion,
+    Fireball { damage: u32 },
+    Confusion { duration: u32 },
 }
 
 impl ProjectileType {
     pub fn name(self) -> &'static str {
         match self {
-            Self::Fireball => "fireball",
-            Self::Confusion => "confusion spell",
+            Self::Fireball { .. } => "fireball",
+            Self::Confusion { .. } => "confusion spell",
         }
     }
 }
@@ -178,6 +178,12 @@ pub struct World {
 pub struct Populate {
     pub player_entity: Entity,
     pub ai_state: ComponentTable<Agent>,
+}
+
+enum BumpAttackOutcome {
+    Hit,
+    Dodge,
+    Kill,
 }
 
 struct VictimDies;
@@ -354,21 +360,21 @@ impl World {
     }
     fn write_combat_log_messages(
         attacker_is_player: bool,
-        victim_dies: bool,
+        outcome: BumpAttackOutcome,
         npc_type: NpcType,
         message_log: &mut Vec<LogMessage>,
     ) {
         if attacker_is_player {
-            if victim_dies {
-                message_log.push(LogMessage::PlayerKillsNpc(npc_type));
-            } else {
-                message_log.push(LogMessage::PlayerAttacksNpc(npc_type));
+            match outcome {
+                BumpAttackOutcome::Kill => message_log.push(LogMessage::PlayerKillsNpc(npc_type)),
+                BumpAttackOutcome::Hit => message_log.push(LogMessage::PlayerAttacksNpc(npc_type)),
+                BumpAttackOutcome::Dodge => message_log.push(LogMessage::NpcDodges(npc_type)),
             }
         } else {
-            if victim_dies {
-                message_log.push(LogMessage::NpcKillsPlayer(npc_type));
-            } else {
-                message_log.push(LogMessage::NpcAttacksPlayer(npc_type));
+            match outcome {
+                BumpAttackOutcome::Kill => message_log.push(LogMessage::NpcKillsPlayer(npc_type)),
+                BumpAttackOutcome::Hit => message_log.push(LogMessage::NpcAttacksPlayer(npc_type)),
+                BumpAttackOutcome::Dodge => message_log.push(LogMessage::PlayerDodges(npc_type)),
             }
         }
     }
@@ -408,11 +414,12 @@ impl World {
                 let dest_character_is_npc =
                     self.components.npc_type.get(dest_character_entity).cloned();
                 if character_is_npc.is_some() != dest_character_is_npc.is_some() {
-                    let victim_dies = self.character_bump_attack(dest_character_entity).is_some();
+                    let outcome =
+                        self.character_bump_attack(dest_character_entity, character_entity, rng);
                     let npc_type = character_is_npc.or(dest_character_is_npc).unwrap();
                     Self::write_combat_log_messages(
                         character_is_npc.is_none(),
-                        victim_dies,
+                        outcome,
                         npc_type,
                         message_log,
                     );
@@ -424,8 +431,27 @@ impl World {
             }
         }
     }
-    fn character_bump_attack(&mut self, victim: Entity) -> Option<VictimDies> {
-        self.character_damage(victim, 1)
+    fn character_bump_attack<R: Rng>(
+        &mut self,
+        victim: Entity,
+        attacker: Entity,
+        rng: &mut R,
+    ) -> BumpAttackOutcome {
+        let &attacker_base_damage = self.components.base_damage.get(attacker).unwrap();
+        let &attacker_strength = self.components.strength.get(attacker).unwrap();
+        let &victim_dexterity = self.components.dexterity.get(victim).unwrap();
+        let gross_damage = attacker_base_damage + rng.gen_range(0..(attacker_strength + 1));
+        let damage_reduction = rng.gen_range(0..(victim_dexterity + 1));
+        let net_damage = gross_damage.saturating_sub(damage_reduction) as u32;
+        if net_damage == 0 {
+            BumpAttackOutcome::Dodge
+        } else {
+            if self.character_damage(victim, net_damage).is_some() {
+                BumpAttackOutcome::Kill
+            } else {
+                BumpAttackOutcome::Hit
+            }
+        }
     }
     fn character_damage(&mut self, victim: Entity, damage: u32) -> Option<VictimDies> {
         if let Some(hit_points) = self.components.hit_points.get_mut(victim) {
@@ -550,16 +576,19 @@ impl World {
         match item_type {
             ItemType::HealthPotion => panic!("invalid item for aim"),
             ItemType::FireballScroll => {
-                message_log.push(LogMessage::PlayerLaunchesProjectile(
-                    ProjectileType::Fireball,
-                ));
-                self.spawn_projectile(character_coord, target, ProjectileType::Fireball);
+                let fireball = ProjectileType::Fireball {
+                    damage: (*self.components.intelligence.get(character).unwrap()).max(0) as u32,
+                };
+                message_log.push(LogMessage::PlayerLaunchesProjectile(fireball));
+                self.spawn_projectile(character_coord, target, fireball);
             }
             ItemType::ConfusionScroll => {
-                message_log.push(LogMessage::PlayerLaunchesProjectile(
-                    ProjectileType::Confusion,
-                ));
-                self.spawn_projectile(character_coord, target, ProjectileType::Confusion);
+                let confusion = ProjectileType::Confusion {
+                    duration: (*self.components.intelligence.get(character).unwrap()).max(0) as u32
+                        * 3,
+                };
+                message_log.push(LogMessage::PlayerLaunchesProjectile(confusion));
+                self.spawn_projectile(character_coord, target, confusion);
             }
         }
         Ok(())
@@ -622,11 +651,11 @@ impl World {
                     entities_to_remove.push(entity);
                     if let Some(&projectile_type) = self.components.projectile.get(entity) {
                         match projectile_type {
-                            ProjectileType::Fireball => {
-                                fireball_hit.push(character);
+                            ProjectileType::Fireball { damage } => {
+                                fireball_hit.push((character, damage));
                             }
-                            ProjectileType::Confusion => {
-                                confusion_hit.push(character);
+                            ProjectileType::Confusion { duration } => {
+                                confusion_hit.push((character, duration));
                             }
                         }
                     }
@@ -641,16 +670,16 @@ impl World {
         for entity in entities_to_remove {
             self.remove_entity(entity);
         }
-        for entity in fireball_hit {
+        for (entity, damage) in fireball_hit {
             let maybe_npc = self.components.npc_type.get(entity).cloned();
-            if let Some(VictimDies) = self.character_damage(entity, 2) {
+            if let Some(VictimDies) = self.character_damage(entity, damage) {
                 if let Some(npc) = maybe_npc {
                     message_log.push(LogMessage::NpcDies(npc));
                 }
             }
         }
-        for entity in confusion_hit {
-            self.components.confusion_countdown.insert(entity, 5);
+        for (entity, duration) in confusion_hit {
+            self.components.confusion_countdown.insert(entity, duration);
             if let Some(&npc_type) = self.components.npc_type.get(entity) {
                 message_log.push(LogMessage::NpcBecomesConfused(npc_type));
             }
