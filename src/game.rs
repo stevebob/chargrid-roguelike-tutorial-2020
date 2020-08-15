@@ -1,8 +1,8 @@
 use crate::behaviour::{Agent, BehaviourContext, NpcAction};
 use crate::visibility::{CellVisibility, VisibilityAlgorithm, VisibilityGrid};
 use crate::world::{
-    HitPoints, Inventory, ItemType, ItemUsage, Location, NpcType, Populate, ProjectileType, Tile,
-    World,
+    EquippedInventoryIndices, HitPoints, Inventory, ItemType, ItemUsage, Location, NpcType,
+    Populate, ProjectileType, Tile, World,
 };
 use coord_2d::{Coord, Size};
 use direction::CardinalDirection;
@@ -297,5 +297,8 @@ impl GameState {
     }
     pub fn dungeon_level(&self) -> u32 {
         self.dungeon_level
+    }
+    pub fn player_equipped_inventory_indices(&self) -> EquippedInventoryIndices {
+        self.world.equipped_inventory_indices(self.player_entity)
     }
 }

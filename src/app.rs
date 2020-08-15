@@ -445,6 +445,7 @@ impl<'a> View<&'a AppData> for InventorySlotMenuView {
     ) {
         let player_inventory_slots = data.game_state.player_inventory().slots();
         self.mouse_tracker.new_frame(context.offset);
+        let equipped_indices = data.game_state.player_equipped_inventory_indices();
         for ((i, entry, maybe_selected), &slot) in data
             .inventory_slot_menu
             .menu_instance()
@@ -476,6 +477,13 @@ impl<'a> View<&'a AppData> for InventorySlotMenuView {
                 )
             };
             let prefix = format!("{} {}) ", selected_prefix, entry.key);
+            let equipment_suffix = if equipped_indices.held == Some(i) {
+                " (held)"
+            } else if equipped_indices.worn == Some(i) {
+                " (worn)"
+            } else {
+                ""
+            };
             let text = &[
                 RichTextPart {
                     text: &prefix,
@@ -483,6 +491,10 @@ impl<'a> View<&'a AppData> for InventorySlotMenuView {
                 },
                 RichTextPart {
                     text: name,
+                    style: name_style,
+                },
+                RichTextPart {
+                    text: equipment_suffix,
                     style: name_style,
                 },
             ];

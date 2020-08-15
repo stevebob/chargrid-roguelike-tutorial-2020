@@ -8,6 +8,11 @@ use line_2d::CardinalStepIter;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
+pub struct EquippedInventoryIndices {
+    pub worn: Option<usize>,
+    pub held: Option<usize>,
+}
+
 pub struct CharacterData {
     entity_data: EntityData,
     inventory_entity_data: Vec<Option<EntityData>>,
@@ -156,6 +161,8 @@ entity_table::declare_entity_module! {
         strength: i32,
         dexterity: i32,
         intelligence: i32,
+        equipment_worn_inventory_index: usize,
+        equipment_held_inventory_index: usize,
     }
 }
 
@@ -560,7 +567,18 @@ impl World {
                 ItemUsage::Immediate
             }
             ItemType::FireballScroll | ItemType::ConfusionScroll => ItemUsage::Aim,
-            ItemType::Sword | ItemType::Staff | ItemType::Armour | ItemType::Robe => todo!(),
+            ItemType::Sword | ItemType::Staff => {
+                self.components
+                    .equipment_held_inventory_index
+                    .insert(character, inventory_index);
+                ItemUsage::Immediate
+            }
+            ItemType::Armour | ItemType::Robe => {
+                self.components
+                    .equipment_worn_inventory_index
+                    .insert(character, inventory_index);
+                ItemUsage::Immediate
+            }
         };
         Ok(usage)
     }
@@ -646,6 +664,28 @@ impl World {
             .item
             .get(item)
             .expect("non-item in inventory");
+        if self
+            .components
+            .equipment_held_inventory_index
+            .get(character)
+            .cloned()
+            == Some(inventory_index)
+        {
+            self.components
+                .equipment_held_inventory_index
+                .remove(character);
+        }
+        if self
+            .components
+            .equipment_worn_inventory_index
+            .get(character)
+            .cloned()
+            == Some(inventory_index)
+        {
+            self.components
+                .equipment_worn_inventory_index
+                .remove(character);
+        }
         message_log.push(LogMessage::PlayerDrops(item_type));
         Ok(())
     }
@@ -881,5 +921,18 @@ impl World {
                 hit_points.max += INCREASE;
             }
         }
+    }
+    pub fn equipped_inventory_indices(&self, entity: Entity) -> EquippedInventoryIndices {
+        let held = self
+            .components
+            .equipment_held_inventory_index
+            .get(entity)
+            .cloned();
+        let worn = self
+            .components
+            .equipment_worn_inventory_index
+            .get(entity)
+            .cloned();
+        EquippedInventoryIndices { held, worn }
     }
 }
