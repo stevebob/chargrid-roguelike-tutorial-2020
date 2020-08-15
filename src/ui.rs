@@ -180,6 +180,12 @@ impl<'a> View<&'a [LogMessage]> for MessagesView {
                     buf[1].style.foreground = Some(colours::npc_colour(npc_type));
                     write!(&mut buf[2].text, " dodges your attack.").unwrap();
                 }
+                PlayerEquips(item_type) => {
+                    write!(&mut buf[0].text, "You equip the ").unwrap();
+                    write!(&mut buf[1].text, "{}", item_type.name()).unwrap();
+                    buf[1].style.foreground = Some(colours::item_colour(item_type));
+                    write!(&mut buf[2].text, ".").unwrap();
+                }
             }
         }
         const NUM_MESSAGES: usize = 4;

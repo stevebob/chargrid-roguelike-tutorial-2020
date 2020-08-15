@@ -636,12 +636,14 @@ impl World {
                 self.components
                     .equipment_held_inventory_index
                     .insert(character, inventory_index);
+                message_log.push(LogMessage::PlayerEquips(item_type));
                 ItemUsage::Immediate
             }
             ItemType::Armour | ItemType::Robe => {
                 self.components
                     .equipment_worn_inventory_index
                     .insert(character, inventory_index);
+                message_log.push(LogMessage::PlayerEquips(item_type));
                 ItemUsage::Immediate
             }
         };

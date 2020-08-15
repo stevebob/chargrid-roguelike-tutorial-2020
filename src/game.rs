@@ -37,6 +37,7 @@ pub enum LogMessage {
     NpcIsNoLongerConfused(NpcType),
     PlayerDodges(NpcType),
     NpcDodges(NpcType),
+    PlayerEquips(ItemType),
 }
 
 #[derive(Clone, Copy, Debug)]
