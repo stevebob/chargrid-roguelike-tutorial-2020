@@ -138,28 +138,33 @@ fn make_npc_probability_distribution(level: u32) -> Vec<(NpcType, u32)> {
 
 fn make_item_probability_distribution(level: u32) -> Vec<(ItemType, u32)> {
     use ItemType::*;
+    let item_chance = match level {
+        0..=1 => 5,
+        2..=3 => 10,
+        _ => 20,
+    };
     vec![
-        (HealthPotion, 20),
+        (HealthPotion, 200),
         (
             FireballScroll,
             match level {
-                0..=1 => 1,
-                2..=4 => 5,
-                _ => 10,
+                0..=1 => 10,
+                2..=4 => 50,
+                _ => 100,
             },
         ),
         (
             ConfusionScroll,
             match level {
-                0..=1 => 1,
-                2..=4 => 3,
-                _ => 5,
+                0..=1 => 10,
+                2..=4 => 30,
+                _ => 50,
             },
         ),
-        (Sword, 1000),
-        (Staff, 1000),
-        (Armour, 1000),
-        (Robe, 1000),
+        (Sword, item_chance),
+        (Staff, item_chance),
+        (Armour, item_chance),
+        (Robe, item_chance),
     ]
 }
 
