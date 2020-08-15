@@ -446,6 +446,67 @@ impl World {
             }
         }
     }
+    fn inventory_item_type(&self, entity: Entity, index: usize) -> Option<ItemType> {
+        self.components.inventory.get(entity).and_then(|inventory| {
+            inventory
+                .get(index)
+                .ok()
+                .and_then(|held_entity| self.components.item.get(held_entity).cloned())
+        })
+    }
+    fn damage_modifier(&self, entity: Entity) -> i32 {
+        self.components
+            .equipment_held_inventory_index
+            .get(entity)
+            .and_then(|&held_index| {
+                self.inventory_item_type(entity, held_index)
+                    .map(|item_type| match item_type {
+                        ItemType::Sword => 1,
+                        _ => 0,
+                    })
+            })
+            .unwrap_or(0)
+    }
+    fn defense_modifier(&self, entity: Entity) -> i32 {
+        self.components
+            .equipment_worn_inventory_index
+            .get(entity)
+            .and_then(|&held_index| {
+                self.inventory_item_type(entity, held_index)
+                    .map(|item_type| match item_type {
+                        ItemType::Armour => 1,
+                        _ => 0,
+                    })
+            })
+            .unwrap_or(0)
+    }
+    fn magic_modifier(&self, entity: Entity) -> i32 {
+        let held = self
+            .components
+            .equipment_held_inventory_index
+            .get(entity)
+            .and_then(|&held_index| {
+                self.inventory_item_type(entity, held_index)
+                    .map(|item_type| match item_type {
+                        ItemType::Staff => 1,
+                        _ => 0,
+                    })
+            })
+            .unwrap_or(0);
+        let worn = self
+            .components
+            .equipment_worn_inventory_index
+            .get(entity)
+            .and_then(|&held_index| {
+                self.inventory_item_type(entity, held_index)
+                    .map(|item_type| match item_type {
+                        ItemType::Robe => 1,
+                        _ => 0,
+                    })
+            })
+            .unwrap_or(0);
+        held + worn
+    }
     fn character_bump_attack<R: Rng>(
         &mut self,
         victim: Entity,
@@ -454,10 +515,14 @@ impl World {
     ) -> BumpAttackOutcome {
         let &attacker_base_damage = self.components.base_damage.get(attacker).unwrap();
         let &attacker_strength = self.components.strength.get(attacker).unwrap();
+        let attacker_damage_modifier = self.damage_modifier(attacker);
         let &victim_dexterity = self.components.dexterity.get(victim).unwrap();
-        let gross_damage = attacker_base_damage + rng.gen_range(0..(attacker_strength + 1));
-        let damage_reduction = rng.gen_range(0..(victim_dexterity + 1));
-        let net_damage = gross_damage.saturating_sub(damage_reduction) as u32;
+        let victim_defense_modifier = self.defense_modifier(victim);
+        let gross_damage = attacker_base_damage
+            + rng.gen_range(0..(attacker_strength + 1))
+            + attacker_damage_modifier;
+        let damage_reduction = rng.gen_range(0..(victim_dexterity + 1)) + victim_defense_modifier;
+        let net_damage = gross_damage.saturating_sub(damage_reduction).max(0) as u32;
         if net_damage == 0 {
             BumpAttackOutcome::Dodge
         } else {
@@ -582,6 +647,14 @@ impl World {
         };
         Ok(usage)
     }
+    fn magic(&self, entity: Entity) -> i32 {
+        self.components
+            .intelligence
+            .get(entity)
+            .cloned()
+            .unwrap_or(0)
+            + self.magic_modifier(entity)
+    }
     pub fn maybe_use_item_aim(
         &mut self,
         character: Entity,
@@ -608,15 +681,14 @@ impl World {
             | ItemType::Robe => panic!("invalid item for aim"),
             ItemType::FireballScroll => {
                 let fireball = ProjectileType::Fireball {
-                    damage: (*self.components.intelligence.get(character).unwrap()).max(0) as u32,
+                    damage: self.magic(character).max(0) as u32,
                 };
                 message_log.push(LogMessage::PlayerLaunchesProjectile(fireball));
                 self.spawn_projectile(character_coord, target, fireball);
             }
             ItemType::ConfusionScroll => {
                 let confusion = ProjectileType::Confusion {
-                    duration: (*self.components.intelligence.get(character).unwrap()).max(0) as u32
-                        * 3,
+                    duration: self.magic(character).max(0) as u32 * 3,
                 };
                 message_log.push(LogMessage::PlayerLaunchesProjectile(confusion));
                 self.spawn_projectile(character_coord, target, confusion);
