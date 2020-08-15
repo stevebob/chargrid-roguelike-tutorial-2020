@@ -326,8 +326,8 @@ impl World {
         self.components.tile.insert(entity, Tile::Stairs);
         self.components.stairs.insert(entity, ());
     }
-    pub fn populate<R: Rng>(&mut self, rng: &mut R) -> Populate {
-        let terrain = terrain::generate_dungeon(self.spatial_table.grid_size(), rng);
+    pub fn populate<R: Rng>(&mut self, level: u32, rng: &mut R) -> Populate {
+        let terrain = terrain::generate_dungeon(self.spatial_table.grid_size(), level, rng);
         let mut player_entity = None;
         let mut ai_state = ComponentTable::default();
         for (coord, &terrain_tile) in terrain.enumerate() {

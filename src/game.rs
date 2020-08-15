@@ -82,7 +82,7 @@ impl GameState {
         let Populate {
             player_entity,
             ai_state,
-        } = world.populate(&mut rng);
+        } = world.populate(dungeon_level, &mut rng);
         let shadowcast_context = shadowcast::Context::default();
         let visibility_grid = VisibilityGrid::new(screen_size);
         let behaviour_context = BehaviourContext::new(screen_size);
@@ -111,7 +111,7 @@ impl GameState {
         let Populate {
             player_entity,
             ai_state,
-        } = self.world.populate(&mut self.rng);
+        } = self.world.populate(self.dungeon_level, &mut self.rng);
         self.world.replace_character(player_entity, player_data);
         self.player_entity = player_entity;
         self.ai_state = ai_state;

@@ -63,33 +63,37 @@ impl Room {
     }
 
     // Place `n` randomly chosen NPCs at random positions within the room
-    fn place_npcs<R: Rng>(&self, n: usize, grid: &mut Grid<Option<TerrainTile>>, rng: &mut R) {
+    fn place_npcs<R: Rng>(
+        &self,
+        n: usize,
+        probability_distribution: &[(NpcType, u32)],
+        grid: &mut Grid<Option<TerrainTile>>,
+        rng: &mut R,
+    ) {
         for coord in self
             .coords()
             .filter(|&coord| grid.get_checked(coord).unwrap() == TerrainTile::Floor)
             .choose_multiple(rng, n)
         {
-            let npc_type = if rng.gen_range(0..100) < 80 {
-                NpcType::Orc
-            } else {
-                NpcType::Troll
-            };
+            let &npc_type = choose_from_probability_distribution(probability_distribution, rng);
             *grid.get_checked_mut(coord) = Some(TerrainTile::Npc(npc_type));
         }
     }
 
     // Place `n` items at random positions within the room
-    fn place_items<R: Rng>(&self, n: usize, grid: &mut Grid<Option<TerrainTile>>, rng: &mut R) {
+    fn place_items<R: Rng>(
+        &self,
+        n: usize,
+        probability_distribution: &[(ItemType, u32)],
+        grid: &mut Grid<Option<TerrainTile>>,
+        rng: &mut R,
+    ) {
         for coord in self
             .coords()
             .filter(|&coord| grid.get_checked(coord).unwrap() == TerrainTile::Floor)
             .choose_multiple(rng, n)
         {
-            let item = match rng.gen_range(0..100) {
-                0..=29 => ItemType::FireballScroll,
-                30..=49 => ItemType::ConfusionScroll,
-                _ => ItemType::HealthPotion,
-            };
+            let &item = choose_from_probability_distribution(probability_distribution, rng);
             *grid.get_checked_mut(coord) = Some(TerrainTile::Item(item));
         }
     }
@@ -111,12 +115,59 @@ fn carve_corridor(start: Coord, end: Coord, grid: &mut Grid<Option<TerrainTile>>
     }
 }
 
-pub fn generate_dungeon<R: Rng>(size: Size, rng: &mut R) -> Grid<TerrainTile> {
+fn choose_from_probability_distribution<'a, T, R: Rng>(
+    probability_distribution: &'a [(T, u32)],
+    rng: &mut R,
+) -> &'a T {
+    let sum = probability_distribution.iter().map(|(_, p)| p).sum::<u32>();
+    let mut choice = rng.gen_range(0..sum);
+    for (value, probability) in probability_distribution.iter() {
+        if let Some(remaining_choice) = choice.checked_sub(*probability) {
+            choice = remaining_choice;
+        } else {
+            return value;
+        }
+    }
+    unreachable!()
+}
+
+fn make_npc_probability_distribution(level: u32) -> Vec<(NpcType, u32)> {
+    use NpcType::*;
+    vec![(Orc, 20), (Troll, level)]
+}
+
+fn make_item_probability_distribution(level: u32) -> Vec<(ItemType, u32)> {
+    use ItemType::*;
+    vec![
+        (HealthPotion, 20),
+        (
+            FireballScroll,
+            match level {
+                0..=1 => 1,
+                2..=4 => 5,
+                _ => 10,
+            },
+        ),
+        (
+            ConfusionScroll,
+            match level {
+                0..=1 => 1,
+                2..=4 => 3,
+                _ => 5,
+            },
+        ),
+    ]
+}
+
+pub fn generate_dungeon<R: Rng>(size: Size, level: u32, rng: &mut R) -> Grid<TerrainTile> {
     let mut grid = Grid::new_copy(size, None);
     let mut room_centres = Vec::new();
 
     const NPCS_PER_ROOM_DISTRIBUTION: &[usize] = &[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4];
     const ITEMS_PER_ROOM_DISTRIBUTION: &[usize] = &[0, 0, 1, 1, 1, 1, 1, 2, 2];
+
+    let npc_probability_distribution = make_npc_probability_distribution(level);
+    let item_probability_distribution = make_item_probability_distribution(level);
 
     // Attempt to add a room a constant number of times
     const NUM_ATTEMPTS: usize = 100;
@@ -140,11 +191,11 @@ pub fn generate_dungeon<R: Rng>(size: Size, rng: &mut R) -> Grid<TerrainTile> {
 
             // Add npcs to the room
             let &num_npcs = NPCS_PER_ROOM_DISTRIBUTION.choose(rng).unwrap();
-            room.place_npcs(num_npcs, &mut grid, rng);
+            room.place_npcs(num_npcs, &npc_probability_distribution, &mut grid, rng);
 
             // Add items to the room
             let &num_items = ITEMS_PER_ROOM_DISTRIBUTION.choose(rng).unwrap();
-            room.place_items(num_items, &mut grid, rng);
+            room.place_items(num_items, &item_probability_distribution, &mut grid, rng);
         }
     }
 
