@@ -81,6 +81,10 @@ pub enum ItemType {
     HealthPotion,
     FireballScroll,
     ConfusionScroll,
+    Sword,
+    Staff,
+    Armour,
+    Robe,
 }
 
 impl ItemType {
@@ -89,6 +93,10 @@ impl ItemType {
             Self::HealthPotion => "health potion",
             Self::FireballScroll => "fireball scroll",
             Self::ConfusionScroll => "confusion scroll",
+            Self::Sword => "sword",
+            Self::Staff => "staff",
+            Self::Armour => "armour",
+            Self::Robe => "robe",
         }
     }
 }
@@ -552,6 +560,7 @@ impl World {
                 ItemUsage::Immediate
             }
             ItemType::FireballScroll | ItemType::ConfusionScroll => ItemUsage::Aim,
+            ItemType::Sword | ItemType::Staff | ItemType::Armour | ItemType::Robe => todo!(),
         };
         Ok(usage)
     }
@@ -574,7 +583,11 @@ impl World {
         let item_entity = inventory.remove(inventory_index).unwrap();
         let &item_type = self.components.item.get(item_entity).unwrap();
         match item_type {
-            ItemType::HealthPotion => panic!("invalid item for aim"),
+            ItemType::HealthPotion
+            | ItemType::Sword
+            | ItemType::Staff
+            | ItemType::Armour
+            | ItemType::Robe => panic!("invalid item for aim"),
             ItemType::FireballScroll => {
                 let fireball = ProjectileType::Fireball {
                     damage: (*self.components.intelligence.get(character).unwrap()).max(0) as u32,

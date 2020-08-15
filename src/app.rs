@@ -869,6 +869,10 @@ pub mod colours {
     pub const HEALTH_POTION: Rgb24 = Rgb24::new(255, 0, 255);
     pub const FIREBALL_SCROLL: Rgb24 = Rgb24::new(255, 127, 0);
     pub const CONFUSION_SCROLL: Rgb24 = Rgb24::new(187, 0, 255);
+    pub const SWORD: Rgb24 = Rgb24::new(187, 187, 187);
+    pub const STAFF: Rgb24 = Rgb24::new(187, 127, 255);
+    pub const ARMOUR: Rgb24 = Rgb24::new(127, 127, 127);
+    pub const ROBE: Rgb24 = Rgb24::new(127, 127, 187);
 
     pub fn npc_colour(npc_type: NpcType) -> Rgb24 {
         match npc_type {
@@ -882,6 +886,10 @@ pub mod colours {
             ItemType::HealthPotion => HEALTH_POTION,
             ItemType::FireballScroll => FIREBALL_SCROLL,
             ItemType::ConfusionScroll => CONFUSION_SCROLL,
+            ItemType::Sword => SWORD,
+            ItemType::Staff => STAFF,
+            ItemType::Armour => ARMOUR,
+            ItemType::Robe => ROBE,
         }
     }
 
@@ -939,6 +947,22 @@ fn currently_visible_view_cell_of_tile(tile: Tile) -> ViewCell {
         Tile::Item(ItemType::ConfusionScroll) => ViewCell::new()
             .with_character('♫')
             .with_foreground(colours::CONFUSION_SCROLL),
+        Tile::Item(ItemType::Sword) => ViewCell::new()
+            .with_bold(true)
+            .with_character('/')
+            .with_foreground(colours::SWORD),
+        Tile::Item(ItemType::Staff) => ViewCell::new()
+            .with_bold(true)
+            .with_character('\\')
+            .with_foreground(colours::STAFF),
+        Tile::Item(ItemType::Armour) => ViewCell::new()
+            .with_bold(true)
+            .with_character(']')
+            .with_foreground(colours::ARMOUR),
+        Tile::Item(ItemType::Robe) => ViewCell::new()
+            .with_bold(true)
+            .with_character('}')
+            .with_foreground(colours::ROBE),
         Tile::Projectile(ProjectileType::Fireball { .. }) => ViewCell::new()
             .with_character('*')
             .with_foreground(colours::FIREBALL_SCROLL),
